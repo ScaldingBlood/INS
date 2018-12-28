@@ -9,7 +9,7 @@ class Status:
     # 预测阶段白噪声
     # w_p,w_v,w_ap,w_bg,w_ba = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
     # 纠正阶段白噪声
-    v_p,v_v,v_ap,v_bg,v_ba,v_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.005, 0.005, 0.005], [0.005, 0.005, 0.05], [0.01, 0.01, 0.01]
+    v_v, v_ap, v_vl, v_p, v_a, v_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
     # 干扰协方差矩阵Q 
     covariance_q = np.eye(15) * 0.01
 
@@ -183,7 +183,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_v[0] + self.v_ap[0], self.v_v[1] + self.v_ap[1], self.v_v[2] + self.v_ap[2]])
+        covariance_r = np.diag([self.v_vl[0], self.v_vl[1], self.v_vl[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
@@ -242,7 +242,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_ap[0] + self.v_ba[0], self.v_ap[1] + self.v_ba[1], self.v_ap[2] + self.v_ba[2]])
+        covariance_r = np.diag([self.v_a[0], self.v_a[1], self.v_a[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
@@ -270,7 +270,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_ap[0], self.v_ap[1], self.v_ap[2]])
+        covariance_r = np.diag([self.v_m[0], self.v_m[1], self.v_m[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
