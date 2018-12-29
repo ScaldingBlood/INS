@@ -8,11 +8,17 @@ class Status:
     g = 9.801
     # 预测阶段白噪声
     # w_p,w_v,w_ap,w_bg,w_ba = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
-    # 纠正阶段白噪声
-    v_v, v_ap, v_vl, v_p, v_a, v_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.015, 0.015, 0.015], [0.01, 0.01, 0.01], [0.015, 0.015, 0.015], [0.01, 0.01, 0.01]
-    # 干扰协方差矩阵Q 
+
+    # ------------------------------------------------------------需要调参--------------------------------------------------------------
+    # 纠正阶段白噪声R -> 信任量测，稳态噪声（重要！）
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
+
+    # 干扰协方差矩阵Q -> 信任模型（重要！）
     covariance_q = np.eye(15) * 0.01
 
+    # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
+    covariance = np.eye(15)
+    # ---------------------------------------------------------------------------------------------------------------------------------
 
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
@@ -30,17 +36,12 @@ class Status:
             delta_ap[0], delta_ap[1], delta_ap[2],
             bg[0], bg[1], bg[2],
             ba[0], ba[1], ba[2]]).T
-        
-        # 状态delta_k的协方差矩阵
-        self.covariance = np.zeros((15, 15))
 
-    
     def get_pos(self):
         return self.position
 
     def get_rotation_matrix(self):
         return self.B2N_matrix
-
 
     def next(self, delta_t, frame):
         # w - bg
@@ -61,7 +62,6 @@ class Status:
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
-
 
     def next_delta(self, delta_t, frame):
         # (f_nX) * delta_t
@@ -92,26 +92,8 @@ class Status:
             [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1]
         ])
 
-        # # current delta
-        # delta_k = np.matrix([
-        #     delta_p[0], delta_p[1], delta_p[2],
-        #     delta_v[0], delta_v[1], delta_v[2],
-        #     delta_ap[0], delta_ap[1], delta_ap[2],
-        #     bg[0], bg[1], bg[2],
-        #     ba[0], ba[1], ba[2]]).T
-
-        # self.delta_k = updater * self.delta_k + np.matrix([w_p[0],w_p[1],w_p[2],w_v[0],w_v[1],w_v[2],w_ap[0],w_ap[1],w_ap[2],w_bg[0],w_bg[1],w_bg[2],w_ba[0],w_ba[1],w_ba[2]])
         self.delta_k = updater * self.delta_k
         self.covariance = updater * self.covariance * updater.T + self.covariance_q
-
-
-    # def update_delta(delta_k):
-    #     self.delta_p = [delta_k[0, 0], delta_k[1, 0], delta_k[2, 0]]
-    #     self.delta_v = [delta_k[3, 0], delta_k[4, 0], delta_k[5, 0]]
-    #     self.delta_ap = [delta_k[6, 0], delta_k[7, 0], delta_k[8, 0]]
-    #     self.bg = [delta_k[9, 0], delta_k[10, 0], delta_k[11, 0]]
-    #     self.ba = [delta_k[12, 0], delta_k[13, 0], delta_k[14, 0]]
-
 
     def correct_by_zupt(self):
         H = np.matrix([
@@ -120,7 +102,7 @@ class Status:
             [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ])
         # 量测噪声
-        covariance_r = np.diag([self.v_v[0], self.v_v[1], self.v_v[2]])
+        covariance_r = np.diag([self.r_v[0], self.r_v[1], self.r_v[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
@@ -133,7 +115,6 @@ class Status:
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
 
-    
     def correct_by_zaru(self, first_epoch_rotation):
         # 描述非常模糊，且使用到ins计算出的航向角，但是系统中并没有对角速度积分
 
@@ -143,19 +124,18 @@ class Status:
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
         ])
         # 量测噪声
-        covariance_r = np.diag([self.v_ap[0], self.v_ap[1], self.v_ap[2]])
+        covariance_r = np.diag([self.r_ap[0], self.r_ap[1], self.r_ap[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
-        K = self.covariance * H.T * ((H * self.covariance * H.T + covariance_r).I)
+        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
 
         # 测量值
-        rotation = cv2.Rodrigues(self.get_rotation_matrix() * (first_epoch_rotation.I))[0]
+        rotation = cv2.Rodrigues(self.get_rotation_matrix() * first_epoch_rotation.I)[0]
 
         self.delta_k = self.delta_k + K * (rotation - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
-
 
     def correct_by_velocity(self, step_speed):
         v_pdr = step_speed
@@ -183,7 +163,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_vl[0], self.v_vl[1], self.v_vl[2]])
+        covariance_r = np.diag([self.r_vl[0], self.r_vl[1], self.r_vl[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
@@ -195,7 +175,6 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
-
 
     def correct_by_step_length(self, step_length, pos):
         if pos is None:
@@ -211,7 +190,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_p[0], self.v_p[1], self.v_p[2]])
+        covariance_r = np.diag([self.r_p[0], self.r_p[1], self.r_p[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
@@ -223,7 +202,6 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
-
 
     def correct_by_gravity(self, frame):
         fb = array2matrix(frame.get_accs())
@@ -242,7 +220,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_a[0], self.v_a[1], self.v_a[2]])
+        covariance_r = np.diag([self.r_a[0], self.r_a[1], self.r_a[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
@@ -251,7 +229,6 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
-
 
     def correct_by_mag(self, frame, mag):
         mb = array2matrix(frame.get_mags())
@@ -270,7 +247,7 @@ class Status:
         ])
 
         # 量测噪声
-        covariance_r = np.diag([self.v_m[0], self.v_m[1], self.v_m[2]])
+        covariance_r = np.diag([self.r_m[0], self.r_m[1], self.r_m[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益

@@ -3,11 +3,12 @@ from step_detector import StepDetector
 from utils import array2matrix
 import numpy as np
 import math
+from threshold_exp import ThresholdEXP
 
 
 class Judgment:
     # quasi static judgment window length
-    N = 100
+    N = 30
     
     # accelerator noise
     acc_noise = 1
@@ -26,7 +27,7 @@ class Judgment:
 
     is_first_step = True
 
-    def __init__(self, delta_t):
+    def __init__(self, delta_t, threshold_exp):
         self.N_frames = deque()
         self.Step_acc_frames = deque()
         self.Win_mag_frames = deque()
@@ -34,6 +35,7 @@ class Judgment:
         self.Win_angle_frames = deque()
         self.step_detector = StepDetector()
         self.delta_t = delta_t
+        self.threshold_exp = threshold_exp
 
     def judge(self, frame):
         self.frame = frame
@@ -50,22 +52,25 @@ class Judgment:
 
         if len(self.N_frames) > self.N:
             self.N_frames.popleft()
-        self.N_frames.append(frame.get_accs())
+        self.N_frames.append(frame)
 
     def quasi_static_state(self):
         if len(self.N_frames) < self.N:
             return False
         else:
-            avg_acc = [sum([accs[j] for accs in self.N_frames]) / self.N for j in range(3)]
-            
+            avg_acc = [sum([frame.get_accs()[j] for frame in self.N_frames]) / self.N for j in range(3)]
+
             sum_acc_delta = 0
-            for accs in self.N_frames:
-                sum_acc_delta += sum(math.pow(accs[i] - avg_acc[i], 2) for i in range(3))
+            for frame in self.N_frames:
+                sum_acc_delta += sum(math.pow(frame.get_accs()[i] - avg_acc[i], 2) for i in range(3))
+            self.threshold_exp.add_sum_delta(sum_acc_delta)
 
             sum_gyro = 0
-            for accs in self.N_frames:
-                sum_gyro += sum(math.pow(accs[i], 2) for i in range(3))
-            
+            for frame in self.N_frames:
+                sum_gyro += sum(math.pow(frame.get_gyros()[i], 2) for i in range(3))
+            self.threshold_exp.add_sum_gryo(sum_gyro)
+
+            self.threshold_exp.add_res_to_judge(sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2))
             if (sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N < self.gama:
                 return True
             else:

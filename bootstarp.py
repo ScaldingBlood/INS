@@ -2,6 +2,7 @@ from status import Status
 from data_access import DataAccess
 from judgment import Judgment
 import numpy as np
+from threshold_exp import ThresholdEXP
 
 print('hello c-ins!')
 
@@ -56,7 +57,8 @@ def process(status, frame, judgment):
     
             
 if __name__ == '__main__':
-    judgment = Judgment(delta_t)
+    threshold_exp = ThresholdEXP()
+    judgment = Judgment(delta_t, threshold_exp)
     data_access = DataAccess()
 
     # initial status
@@ -77,3 +79,5 @@ if __name__ == '__main__':
         if frame is None:
             break
         process(status, frame, judgment)
+
+    threshold_exp.show()
