@@ -1,9 +1,7 @@
 from collections import deque
 from step_detector import StepDetector
-from utils import array2matrix
 import numpy as np
 import math
-from threshold_exp import ThresholdEXP
 
 
 class Judgment:
@@ -15,7 +13,7 @@ class Judgment:
     # gyroscope noise
     gyro_noise = 1
     # quasi static judgment parameter
-    gama = 0.3
+    gama = 10
     
     # variance of acceleration
     va = 3
@@ -63,6 +61,8 @@ class Judgment:
             sum_acc_delta = 0
             for frame in self.N_frames:
                 sum_acc_delta += sum(math.pow(frame.get_accs()[i] - avg_acc[i], 2) for i in range(3))
+            if math.isnan(sum_acc_delta):
+                print("Nan")
             self.threshold_exp.add_sum_delta(sum_acc_delta)
 
             sum_gyro = 0
@@ -120,7 +120,12 @@ class Judgment:
             gyros.append((np.matrix(g) * rotation_matrix)[0, 2])
         avg = np.mean(np.array(gyros))
 
-        tmp = list(self.Win_angle_frames)
-        diff = (tmp[self.Win_size - 1] - tmp[0]) / (self.Win_size * self.delta_t)
+        self.threshold_exp.add_avg_gyo(avg)
 
+        tmp = list(self.Win_angle_frames)
+        diff = (tmp[self.Win_size - 1] - tmp[0]) / ((self.Win_size - 1) * self.delta_t)
+
+        self.threshold_exp.add_mag_gyo(diff)
+
+        self.threshold_exp.add_mag_res(math.fabs(avg - diff) - self.T)
         return math.fabs(avg - diff) - self.T > 0
