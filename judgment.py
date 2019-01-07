@@ -9,9 +9,9 @@ class Judgment:
     N = 30
     
     # accelerator noise
-    acc_noise = 1
+    acc_noise = 0.01
     # gyroscope noise
-    gyro_noise = 1
+    gyro_noise = 0.01
     # quasi static judgment parameter
     gama = 10
     
@@ -48,7 +48,7 @@ class Judgment:
         self.Win_gry_frames.append(frame.get_gyros())
         self.Win_angle_frames.append(frame.get_angle())
 
-        if len(self.N_frames) > self.N:
+        if len(self.N_frames) == self.N:
             self.N_frames.popleft()
         self.N_frames.append(frame)
 
@@ -61,8 +61,6 @@ class Judgment:
             sum_acc_delta = 0
             for frame in self.N_frames:
                 sum_acc_delta += sum(math.pow(frame.get_accs()[i] - avg_acc[i], 2) for i in range(3))
-            if math.isnan(sum_acc_delta):
-                print("Nan")
             self.threshold_exp.add_sum_delta(sum_acc_delta)
 
             sum_gyro = 0
@@ -107,9 +105,10 @@ class Judgment:
         return np.var(mos) > self.va
 
     def low_dynamic(self):
-        accs = self.frame.get_accs()
-        mo = math.sqrt(sum(pow(accs[i], 2) for i in range(3)))
-        return math.fabs(mo - 9.801) < 1
+        # accs = self.frame.get_accs()
+        # mo = math.sqrt(sum(pow(accs[i], 2) for i in range(3)))
+        mo = np.linalg.norm(np.array(self.frame.get_accs()))
+        return math.fabs(mo - 9.801) < 0.5
 
     def quasi_static_magnetic(self, rotation_matrix):
         if len(self.Win_gry_frames) < self.Win_size:
@@ -127,5 +126,5 @@ class Judgment:
 
         self.threshold_exp.add_mag_gyo(diff)
 
-        self.threshold_exp.add_mag_res(math.fabs(avg - diff) - self.T)
-        return math.fabs(avg - diff) - self.T > 0
+        self.threshold_exp.add_mag_res(math.fabs(avg - diff))
+        return self.T - math.fabs(avg - diff) > 0

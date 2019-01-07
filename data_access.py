@@ -4,8 +4,8 @@ import pandas as pd
 
 class DataAccess:
     def __init__(self):
-        self.df = pd.read_csv('data/AHRS_Data1546079549538.txt')
-        self.loc = pd.read_csv('data/Location_Result1546079549538.txt')
+        self.df = pd.read_csv('data/AHRS_Data1546680613596.txt')
+        self.loc = pd.read_csv('data/Location_Result1546680613596.txt')
         self.flag = True
         self.pos = 0
         self.sum = self.df.shape[0]
@@ -28,7 +28,7 @@ class DataAccess:
         return frame
 
     def get_start_pos(self):
-        return self.loc.iloc[0, 0], self.loc.iloc[0, 1]
+        return self.loc.iloc[0, 1], self.loc.iloc[0, 2]
 
     def get_end_pos(self):
-        return self.loc.iloc[1, 0], self.loc.iloc[1, 1]
+        return self.loc.iloc[1, 1], self.loc.iloc[1, 2]

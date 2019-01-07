@@ -33,6 +33,7 @@ def process(status, frame, judgment):
             status.correct_by_zaru(first_epoch_rotation)
         pos = status.get_pos()
     else:
+        first_epoch_rotation = None
         step_length, step_speed = judgment.new_step()
         if step_length > 0:
             if judgment.in_a_swing():
@@ -74,10 +75,14 @@ if __name__ == '__main__':
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
 
+    flag = 0
     while True:
         frame = data_access.get_frame()
         if frame is None:
             break
-        process(status, frame, judgment)
+        elif np.linalg.norm(np.array(frame.get_accs())) < 9.5:
+            flag = 1
+        if flag == 1:
+            process(status, frame, judgment)
 
     threshold_exp.show()

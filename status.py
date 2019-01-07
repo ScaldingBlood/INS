@@ -1,5 +1,6 @@
 import math
 from utils import *
+import numpy as np
 import cv2
 
 
@@ -11,7 +12,7 @@ class Status:
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
     # 测量协方差矩阵R -> 越大越信任量测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1]
 
     # 预测协方差矩阵Q -> 越大越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
     covariance_q = np.eye(15) * 0.3
@@ -56,12 +57,18 @@ class Status:
         accs = frame.get_accs()
         tmp = [accs[0] - self.delta_k[12, 0], accs[1] - self.delta_k[13, 0], accs[2] - self.delta_k[14, 0]]
         # v = v + [C * (f - ba) -g] * delta_t
-        self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - np.matrix([0, 0, -9.801])) * delta_t
+        self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
+        if (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g]))[2] < -100:
+            print(self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g]))
         self.velocity = self.velocity - array2matrix([self.delta_k[3, 0], self.delta_k[4, 0], self.delta_k[5, 0]])
 
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
+        # print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
+        # print(self.position)
+        print(self.delta_k)
+        print()
 
     def next_delta(self, delta_t, frame):
         # (f_nX) * delta_t
@@ -104,9 +111,9 @@ class Status:
         # 量测噪声
         covariance_r = np.diag([self.r_v[0], self.r_v[1], self.r_v[2]])
         covariance_r = np.multiply(covariance_r, covariance_r)
-        
+
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
         y = self.velocity - np.matrix([0, 0, 0]).T
@@ -128,10 +135,10 @@ class Status:
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
-        rotation = cv2.Rodrigues(self.get_rotation_matrix() * first_epoch_rotation.I)[0]
+        rotation = cv2.Rodrigues(first_epoch_rotation.I * self.get_rotation_matrix())[0]
 
         self.delta_k = self.delta_k + K * (rotation - H * self.delta_k)
 
@@ -167,7 +174,7 @@ class Status:
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
         y = self.velocity - np.matrix([v_pdr, 0, 0]).T
@@ -194,7 +201,7 @@ class Status:
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
         y = self.position - pos
@@ -209,7 +216,7 @@ class Status:
         tmp = self.B2N_matrix * fb
 
         # 测量值
-        y = tmp - array2matrix([0, 0, -9.801])
+        y = tmp - array2matrix([0, 0, self.g])
 
         tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
 
@@ -224,7 +231,7 @@ class Status:
         covariance_r = np.multiply(covariance_r, covariance_r)
         
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
@@ -251,7 +258,7 @@ class Status:
         covariance_r = np.multiply(covariance_r, covariance_r)
 
         # 卡尔曼增益
-        K = self.covariance * H.T * (H * self.covariance * H.T + covariance_r).I
+        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 

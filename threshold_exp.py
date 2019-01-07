@@ -4,12 +4,12 @@ import numpy as np
 
 class ThresholdEXP:
     avg_acc_list = []
-    sum_delta = []
-    sum_gryo = []
+    sum_delta = []  # 1e-5
+    sum_gryo = []  # 1e-7
     res_to_judge = []
 
-    avg_gyo_list = []
-    mag_gyo_list = []
+    avg_gyo_list = []  # 0.00072
+    mag_gyo_list = []  # -0.03
     mag_res_to_judge = []
 
     def add_avg_acc(self, acc):
@@ -36,10 +36,11 @@ class ThresholdEXP:
     def show(self):
         plt.figure()
         t = np.arange(0, len(self.res_to_judge) * 0.01, 0.01)
-        plt.plot(t, self.sum_delta, 'r--', t, self.sum_gryo, 'g--', t, self.res_to_judge, 'b--')
+        plt.plot(t, self.sum_delta, 'r-', t, self.sum_gryo, 'g:', t, self.res_to_judge, 'b-.')
         plt.figure(2)
         mag_t = np.arange(0, len(self.mag_res_to_judge) * 0.01, 0.01)
         plt.plot(mag_t, self.avg_gyo_list, 'r--', mag_t, self.mag_gyo_list, 'g--', mag_t, self.mag_res_to_judge, 'b--')
+        # plt.plot(mag_t, self.avg_gyo_list, 'r--', mag_t, self.mag_gyo_list, 'g--')
         plt.show()
         # for i in range(len(self.res_to_judge)):
         #     print(str(self.sum_delta[i]) + " " + str(self.sum_gryo[i]) + " " + str(self.res_to_judge[i]) + " " + str(self.res_to_judge[i] < 0.3))
