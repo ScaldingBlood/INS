@@ -12,10 +12,10 @@ class Status:
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
     # 测量协方差矩阵R -> 越大越信任量测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1]
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [1, 1, 1], [0.1, 0.1, 0.1]
 
     # 预测协方差矩阵Q -> 越大越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
-    covariance_q = np.eye(15) * 0.3
+    covariance_q = np.eye(15) * 0.02
 
     # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
     covariance = np.eye(15)
@@ -53,9 +53,9 @@ class Status:
         # C = (I - cross_product(delta_ap)) * C
         self.B2N_matrix = (np.eye(3) - cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])) * self.B2N_matrix
 
-        # f - ba
+        # f + ba
         accs = frame.get_accs()
-        tmp = [accs[0] - self.delta_k[12, 0], accs[1] - self.delta_k[13, 0], accs[2] - self.delta_k[14, 0]]
+        tmp = [accs[0] + self.delta_k[12, 0], accs[1] + self.delta_k[13, 0], accs[2] + self.delta_k[14, 0]]
         # v = v + [C * (f - ba) -g] * delta_t
         self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
         if (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g]))[2] < -100:
@@ -66,8 +66,15 @@ class Status:
         self.position = self.position + self.velocity * delta_t
         # print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
-        # print(self.position)
-        print(self.delta_k)
+        print(self.delta_k.T)
+        print()
+        print('p ' + str(self.position))
+        print('v ' + str(self.velocity))
+        print('a ' + str(accs))
+        print('a ' + str(array2matrix(tmp)))
+        print('a ' + str(self.B2N_matrix * array2matrix(tmp)))
+        print('ad ' + str(self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
+        print('r ' + str(self.B2N_matrix))
         print()
 
     def next_delta(self, delta_t, frame):
@@ -121,6 +128,7 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("zupt " + str(self.delta_k.T))
 
     def correct_by_zaru(self, first_epoch_rotation):
         # 描述非常模糊，且使用到ins计算出的航向角，但是系统中并没有对角速度积分
@@ -138,11 +146,12 @@ class Status:
         K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
-        rotation = cv2.Rodrigues(first_epoch_rotation.I * self.get_rotation_matrix())[0]
+        rotation = cv2.Rodrigues(self.get_rotation_matrix() * first_epoch_rotation.I)[0]
 
         self.delta_k = self.delta_k + K * (rotation - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("zaru " + str(self.delta_k.T))
 
     def correct_by_velocity(self, step_speed):
         v_pdr = step_speed
@@ -182,6 +191,7 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("step-v " + str(self.delta_k.T))
 
     def correct_by_step_length(self, step_length, pos):
         if pos is None:
@@ -209,6 +219,7 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("step-l " + str(self.delta_k.T))
 
     def correct_by_gravity(self, frame):
         fb = array2matrix(frame.get_accs())
@@ -216,7 +227,7 @@ class Status:
         tmp = self.B2N_matrix * fb
 
         # 测量值
-        y = tmp - array2matrix([0, 0, self.g])
+        y = tmp + array2matrix([self.delta_k[12, 0], self.delta_k[13, 0], self.delta_k[14, 0]]) - array2matrix([0, 0, self.g])
 
         tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
 
@@ -236,6 +247,7 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("g " + str(self.delta_k.T))
 
     def correct_by_mag(self, frame, mag):
         mb = array2matrix(frame.get_mags())
@@ -263,3 +275,5 @@ class Status:
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
         self.covariance = (np.eye(15) - K * H) * self.covariance
+        print("mag " + str(self.delta_k.T))
+

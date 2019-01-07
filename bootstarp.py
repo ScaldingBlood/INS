@@ -80,7 +80,7 @@ if __name__ == '__main__':
         frame = data_access.get_frame()
         if frame is None:
             break
-        elif np.linalg.norm(np.array(frame.get_accs())) < 9.5:
+        elif np.linalg.norm(np.array(frame.get_accs())) > 9.5:
             flag = 1
         if flag == 1:
             process(status, frame, judgment)
