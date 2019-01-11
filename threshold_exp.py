@@ -39,7 +39,7 @@ class ThresholdEXP:
         plt.plot(t, self.sum_delta, 'r-', t, self.sum_gryo, 'g:', t, self.res_to_judge, 'b-.')
         plt.figure(2)
         mag_t = np.arange(0, len(self.mag_res_to_judge) * 0.01, 0.01)
-        plt.plot(mag_t, self.avg_gyo_list, 'r--', mag_t, self.mag_gyo_list, 'g--', mag_t, self.mag_res_to_judge, 'b--')
+        plt.plot(mag_t, self.avg_gyo_list, 'r-', mag_t, self.mag_gyo_list, 'g:', mag_t, self.mag_res_to_judge, 'b-.')
         # plt.plot(mag_t, self.avg_gyo_list, 'r--', mag_t, self.mag_gyo_list, 'g--')
         plt.show()
         # for i in range(len(self.res_to_judge)):

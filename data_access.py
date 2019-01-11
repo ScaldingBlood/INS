@@ -4,8 +4,8 @@ import pandas as pd
 
 class DataAccess:
     def __init__(self):
-        self.df = pd.read_csv('data/AHRS_Data1546680613596.txt')
-        self.loc = pd.read_csv('data/Location_Result1546680613596.txt')
+        self.df = pd.read_csv('data/AHRS_Data1547203048647.txt')
+        self.loc = pd.read_csv('data/Location_Result1547203048647.txt')
         self.flag = True
         self.pos = 0
         self.sum = self.df.shape[0]

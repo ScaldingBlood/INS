@@ -11,11 +11,11 @@ class Status:
     # w_p,w_v,w_ap,w_bg,w_ba = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
-    # 测量协方差矩阵R -> 越大越信任量测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [1, 1, 1], [0.1, 0.1, 0.1]
+    # 测量协方差矩阵R -> 越小越信任量测，稳态噪声（重要！）
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]
 
-    # 预测协方差矩阵Q -> 越大越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
-    covariance_q = np.eye(15) * 0.02
+    # 预测协方差矩阵Q -> 越小越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
+    covariance_q = np.eye(15)
 
     # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
     covariance = np.eye(15)
@@ -50,31 +50,43 @@ class Status:
         tmp = [gyros[0] - self.delta_k[9, 0], gyros[1] - self.delta_k[10, 0],gyros[2] - self.delta_k[11, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
         self.B2N_matrix = self.B2N_matrix + self.B2N_matrix * cross_product(tmp) * delta_t
-        # C = (I - cross_product(delta_ap)) * C
-        self.B2N_matrix = (np.eye(3) - cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])) * self.B2N_matrix
+        # # C = (I - cross_product(delta_ap))^-1 * C
+        # print(self.B2N_matrix * self.B2N_matrix.T)
+        # tmp = (np.eye(3) - cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I
+        # print(tmp * tmp.T)
+        # self.B2N_matrix = (np.eye(3) + cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I * self.B2N_matrix
+        # # self.B2N_matrix = self.B2N_matrix / np.linalg.norm(self.B2N_matrix)
+        # print('r*r.T ' + str(self.B2N_matrix * (self.B2N_matrix.T)))
+        # print()
+        # rotation matrix of attitude error
+        error_vector = array2matrix([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])
+        error_mod = np.linalg.norm(error_vector)
+        error_vector = error_vector / error_mod
+        error_rotation = (1 - math.cos(error_mod)) * error_vector * error_vector.T + math.cos(error_mod) * np.eye(3) - math.sin(error_mod) * cross_product(error_vector)
+        # print(error_rotation)
+        # print(error_rotation * error_rotation.T)
+        self.B2N_matrix = error_rotation.T * self.B2N_matrix
+        # print(self.B2N_matrix * self.B2N_matrix.T)
 
-        # f + ba
+        # f - ba
         accs = frame.get_accs()
-        tmp = [accs[0] + self.delta_k[12, 0], accs[1] + self.delta_k[13, 0], accs[2] + self.delta_k[14, 0]]
+        tmp = [accs[0] - self.delta_k[12, 0], accs[1] - self.delta_k[13, 0], accs[2] - self.delta_k[14, 0]]
         # v = v + [C * (f - ba) -g] * delta_t
         self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
-        if (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g]))[2] < -100:
-            print(self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g]))
         self.velocity = self.velocity - array2matrix([self.delta_k[3, 0], self.delta_k[4, 0], self.delta_k[5, 0]])
 
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
         # print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
-        print(self.delta_k.T)
         print()
         print('p ' + str(self.position))
         print('v ' + str(self.velocity))
-        print('a ' + str(accs))
-        print('a ' + str(array2matrix(tmp)))
-        print('a ' + str(self.B2N_matrix * array2matrix(tmp)))
+        print('rotation' + str(self.B2N_matrix))
+        # print('a ' + str(accs))
+        # print('a-ba ' + str(array2matrix(tmp)))
+        print('C*a ' + str(self.B2N_matrix * array2matrix(tmp)))
         print('ad ' + str(self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
-        print('r ' + str(self.B2N_matrix))
         print()
 
     def next_delta(self, delta_t, frame):
@@ -85,29 +97,49 @@ class Status:
 
         # 15 * 15
         updater = np.matrix([
-            [1, 0, 0,  delta_t, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
-            [0, 1, 0,  0, delta_t, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
-            [0, 0, 1,  0, 0, delta_t,  0, 0, 0,  0, 0, 0,  0, 0, 0],
+            # [1, 0, 0,  delta_t, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
+            # [0, 1, 0,  0, delta_t, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
+            # [0, 0, 1,  0, 0, delta_t,  0, 0, 0,  0, 0, 0,  0, 0, 0],
+            #
+            # [0, 0, 0,  1, 0, 0,  fnt[0, 0], fnt[0, 1], fnt[0, 1],  0, 0, 0,  ct[0, 0], ct[0, 1], ct[0, 2]],
+            # [0, 0, 0,  0, 1, 0,  fnt[1, 0], fnt[1, 1], fnt[1, 2],  0, 0, 0,  ct[1, 0], ct[1, 1], ct[1, 2]],
+            # [0, 0, 0,  0, 0, 1,  fnt[2, 0], fnt[2, 1], fnt[2, 2],  0, 0, 0,  ct[2, 0], ct[2, 1], ct[2, 2]],
+            #
+            # [0, 0, 0,  0, 0, 0,  1, 0, 0,  -ct[0, 0], -ct[0, 1], -ct[0, 2],  0, 0, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 1, 0,  -ct[1, 0], -ct[1, 1], -ct[1, 2],  0, 0, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 0, 1,  -ct[2, 0], -ct[2, 1], -ct[2, 2],  0, 0, 0],
+            #
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0,  0, 0, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0,  0, 0, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1,  0, 0, 0],
+            #
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0],
+            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1]
+            [0, 0, 0, delta_t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, delta_t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, delta_t, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 
-            [0, 0, 0,  1, 0, 0,  fnt[0, 0], fnt[0, 1], fnt[0, 1],  0, 0, 0,  ct[0, 0], ct[0, 1], ct[0, 2]],
-            [0, 0, 0,  0, 1, 0,  fnt[1, 0], fnt[1, 1], fnt[1, 2],  0, 0, 0,  ct[1, 0], ct[1, 1], ct[1, 2]],
-            [0, 0, 0,  0, 0, 1,  fnt[2, 0], fnt[2, 1], fnt[2, 2],  0, 0, 0,  ct[2, 0], ct[2, 1], ct[2, 2]],
+            [0, 0, 0, 0, 0, 0, fnt[0, 0], fnt[0, 1], fnt[0, 1], 0, 0, 0, ct[0, 0], ct[0, 1], ct[0, 2]],
+            [0, 0, 0, 0, 0, 0, fnt[1, 0], fnt[1, 1], fnt[1, 2], 0, 0, 0, ct[1, 0], ct[1, 1], ct[1, 2]],
+            [0, 0, 0, 0, 0, 0, fnt[2, 0], fnt[2, 1], fnt[2, 2], 0, 0, 0, ct[2, 0], ct[2, 1], ct[2, 2]],
 
-            [0, 0, 0,  0, 0, 0,  1, 0, 0,  -ct[0, 0], -ct[0, 1], -ct[0, 2],  0, 0, 0],
-            [0, 0, 0,  0, 0, 0,  0, 1, 0,  -ct[1, 0], -ct[1, 1], -ct[1, 2],  0, 0, 0],
-            [0, 0, 0,  0, 0, 0,  0, 0, 1,  -ct[2, 0], -ct[2, 1], -ct[2, 2],  0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -ct[0, 0], -ct[0, 1], -ct[0, 2], 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -ct[1, 0], -ct[1, 1], -ct[1, 2], 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -ct[2, 0], -ct[2, 1], -ct[2, 2], 0, 0, 0],
 
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0,  0, 0, 0],
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0,  0, 0, 0],
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1,  0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
 
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0],
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0],
-            [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1]
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
         ])
 
         self.delta_k = updater * self.delta_k
         self.covariance = updater * self.covariance * updater.T + self.covariance_q
+        print(self.delta_k.T)
 
     def correct_by_zupt(self):
         H = np.matrix([
@@ -227,7 +259,8 @@ class Status:
         tmp = self.B2N_matrix * fb
 
         # 测量值
-        y = tmp + array2matrix([self.delta_k[12, 0], self.delta_k[13, 0], self.delta_k[14, 0]]) - array2matrix([0, 0, self.g])
+        # y = tmp - array2matrix([self.delta_k[12, 0], self.delta_k[13, 0], self.delta_k[14, 0]]) - array2matrix([0, 0, self.g])
+        y = tmp - array2matrix([0, 0, self.g])
 
         tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
 
@@ -235,6 +268,9 @@ class Status:
             [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, self.B2N_matrix[0, 0], self.B2N_matrix[0, 1], self.B2N_matrix[0, 2]],
             [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, self.B2N_matrix[1, 0], self.B2N_matrix[1, 1], self.B2N_matrix[1, 2]],
             [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, self.B2N_matrix[2, 0], self.B2N_matrix[2, 1], self.B2N_matrix[2, 2]]
+            # [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, 0, 0, 0],
+            # [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, 0, 0, 0],
+            # [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, 0, 0, 0]
         ])
 
         # 量测噪声
@@ -255,8 +291,10 @@ class Status:
         tmp = self.B2N_matrix * mb
 
         # 测量值
-        y = tmp - array2matrix(mag)
-
+        y = tmp - mag
+        if abs(y[0]) > 10 or abs(y[1]) > 10 or abs(y[2]) > 10:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print(y)
         tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
 
         H = np.matrix([

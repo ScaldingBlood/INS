@@ -1,5 +1,5 @@
 #encoding=utf-8
-
+import math
 
 class StepDetector:
     # 初始化数据
@@ -29,11 +29,11 @@ class StepDetector:
         last_num = self.newsum
         # low-pass Filter
         FILTERING_VALUE = 0.84
-        accs = [self.low[i] * FILTERING_VALUE + accs[i] * (1 - FILTERING_VALUE) if self.low[i] != 0 else accs[i] for i in range(3)]
+        accs = [(self.low[i] * FILTERING_VALUE + accs[i] * (1 - FILTERING_VALUE)) if self.low[i] != 0 else accs[i] for i in range(3)]
 
         self.low = accs
         self.flag = 0
-        self.value_A = sum(pow(i, 2) for i in accs)
+        self.value_A = math.sqrt(sum(pow(i, 2) for i in accs))
         # print(A)
         self.value_B = self.value_A - 9.8
         # print(self.value_B)

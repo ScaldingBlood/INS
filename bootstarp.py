@@ -3,6 +3,7 @@ from data_access import DataAccess
 from judgment import Judgment
 import numpy as np
 from threshold_exp import ThresholdEXP
+from utils import *
 
 print('hello c-ins!')
 
@@ -45,18 +46,18 @@ def process(status, frame, judgment):
     if judgment.low_dynamic():
         status.correct_by_gravity(frame)
 
-    if judgment.quasi_static_magnetic(status.get_rotation_matrix()):
-        if first_epoch_mag is None:
-            first_epoch_mag = frame.get_mags()
-        else:
-            status.correct_by_mag(frame, first_epoch_mag)
-    else:
-        first_epoch_mag = None
+    # if judgment.quasi_static_magnetic(status.get_rotation_matrix(), first_epoch_mag):
+    #     if first_epoch_mag is None:
+    #         first_epoch_mag = status.get_rotation_matrix() * array2matrix(frame.get_mags())
+    #     else:
+    #         status.correct_by_mag(frame, first_epoch_mag)
+    # else:
+    #     first_epoch_mag = None
     
     # feedback
     status.next(delta_t, frame)
-    
-            
+
+
 if __name__ == '__main__':
     threshold_exp = ThresholdEXP()
     judgment = Judgment(delta_t, threshold_exp)

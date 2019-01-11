@@ -2,6 +2,7 @@ from collections import deque
 from step_detector import StepDetector
 import numpy as np
 import math
+from utils import *
 
 
 class Judgment:
@@ -9,27 +10,28 @@ class Judgment:
     N = 30
     
     # accelerator noise
-    acc_noise = 0.01
+    acc_noise = 0.5
     # gyroscope noise
-    gyro_noise = 0.01
+    gyro_noise = 0.5
     # quasi static judgment parameter
-    gama = 10
+    gama = 1 / N
     
     # variance of acceleration
-    va = 3
+    va = 2
 
     # window size of mag
     Win_size = 10
     # threshold to judge quasi static mag
-    T = 1
+    T = 2
 
     is_first_step = True
 
     def __init__(self, delta_t, threshold_exp):
         self.N_frames = deque()
         self.Step_acc_frames = deque()
+        self.rotations = deque()
         self.Win_mag_frames = deque()
-        self.Win_gry_frames = deque()
+        self.Win_gyr_frames = deque()
         self.Win_angle_frames = deque()
         self.step_detector = StepDetector()
         self.delta_t = delta_t
@@ -42,10 +44,10 @@ class Judgment:
 
         if len(self.Win_mag_frames) == self.Win_size:
             self.Win_mag_frames.popleft()
-            self.Win_gry_frames.popleft()
+            self.Win_gyr_frames.popleft()
             self.Win_angle_frames.popleft()
         self.Win_mag_frames.append(frame.get_mags())
-        self.Win_gry_frames.append(frame.get_gyros())
+        self.Win_gyr_frames.append(frame.get_gyros())
         self.Win_angle_frames.append(frame.get_angle())
 
         if len(self.N_frames) == self.N:
@@ -68,7 +70,7 @@ class Judgment:
                 sum_gyro += sum(math.pow(frame.get_gyros()[i], 2) for i in range(3))
             self.threshold_exp.add_sum_gryo(sum_gyro)
 
-            self.threshold_exp.add_res_to_judge(sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2))
+            self.threshold_exp.add_res_to_judge((sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N)
             if (sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N < self.gama:
                 return True
             else:
@@ -110,13 +112,16 @@ class Judgment:
         mo = np.linalg.norm(np.array(self.frame.get_accs()))
         return math.fabs(mo - 9.801) < 0.5
 
-    def quasi_static_magnetic(self, rotation_matrix):
-        if len(self.Win_gry_frames) < self.Win_size:
+    def quasi_static_magnetic(self, rotation_matrix, first_epoch_mag):
+        self.rotations.append(rotation_matrix)
+        if len(self.Win_gyr_frames) < self.Win_size:
             return False
+        elif len(self.Win_gyr_frames) > self.Win_size:
+            self.rotations.popleft()
 
         gyros = []
-        for g in self.Win_gry_frames:
-            gyros.append((np.matrix(g) * rotation_matrix)[0, 2])
+        for i in range(len(self.Win_gyr_frames)):
+            gyros.append((self.rotations[i] * np.matrix(self.Win_gyr_frames[i]).T)[2, 0])
         avg = np.mean(np.array(gyros))
 
         self.threshold_exp.add_avg_gyo(avg)
@@ -127,4 +132,9 @@ class Judgment:
         self.threshold_exp.add_mag_gyo(diff)
 
         self.threshold_exp.add_mag_res(math.fabs(avg - diff))
+        print('list' + str(tmp))
+        print(str(diff))
+        print(first_epoch_mag)
+        print(rotation_matrix * array2matrix(self.Win_mag_frames[self.Win_size - 1]))
+        print(self.T - math.fabs(avg - diff))
         return self.T - math.fabs(avg - diff) > 0
