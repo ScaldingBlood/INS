@@ -2,7 +2,7 @@ from status import Status
 from data_access import DataAccess
 from judgment import Judgment
 import numpy as np
-from threshold_exp import ThresholdEXP
+from experiment import Experiment
 from utils import *
 
 print('hello c-ins!')
@@ -21,6 +21,7 @@ def process(status, frame, judgment):
     global first_epoch_mag
     global first_epoch_rotation
 
+    exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
     # predict
     status.next_delta(delta_t, frame)
 
@@ -28,10 +29,10 @@ def process(status, frame, judgment):
     judgment.judge(frame)
     if judgment.quasi_static_state():
         status.correct_by_zupt()
-        if first_epoch_rotation is None:
-            first_epoch_rotation = status.get_rotation_matrix()
-        else:
-            status.correct_by_zaru(first_epoch_rotation)
+        # if first_epoch_rotation is None:
+        #     first_epoch_rotation = status.get_rotation_matrix()
+        # else:
+        #     status.correct_by_zaru(first_epoch_rotation)
         pos = status.get_pos()
     else:
         first_epoch_rotation = None
@@ -55,12 +56,12 @@ def process(status, frame, judgment):
     #     first_epoch_mag = None
     
     # feedback
-    status.next(delta_t, frame)
+    status.next(delta_t, frame, exp)
 
 
 if __name__ == '__main__':
-    threshold_exp = ThresholdEXP()
-    judgment = Judgment(delta_t, threshold_exp)
+    exp = Experiment()
+    judgment = Judgment(delta_t, exp)
     data_access = DataAccess()
 
     # initial status
@@ -72,7 +73,7 @@ if __name__ == '__main__':
     delta_v = [0, 0, 0]
     delta_ap = [0, 0, 0]
     bg = [0, 0, 0]
-    ba = [0, 0, 0]
+    ba = [0, 0.015, 0.015]
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
 
@@ -81,9 +82,9 @@ if __name__ == '__main__':
         frame = data_access.get_frame()
         if frame is None:
             break
-        elif np.linalg.norm(np.array(frame.get_accs())) > 9.5:
-            flag = 1
-        if flag == 1:
+        elif np.linalg.norm(np.array(frame.get_accs())) > 9:
+        #     flag = 1
+        # if flag == 1:
             process(status, frame, judgment)
 
-    threshold_exp.show()
+    exp.show()

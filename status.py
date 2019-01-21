@@ -44,14 +44,16 @@ class Status:
     def get_rotation_matrix(self):
         return self.B2N_matrix
 
-    def next(self, delta_t, frame):
+    def next(self, delta_t, frame, exp):
+        if self.delta_k[9, 0] > 10 or self.delta_k[10, 0] > 10 or self.delta_k[11, 0] > 10:
+            print("!")
         # w - bg
         gyros = frame.get_gyros()
         tmp = [gyros[0] - self.delta_k[9, 0], gyros[1] - self.delta_k[10, 0],gyros[2] - self.delta_k[11, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
         self.B2N_matrix = self.B2N_matrix + self.B2N_matrix * cross_product(tmp) * delta_t
         # # C = (I - cross_product(delta_ap))^-1 * C
-        # print(self.B2N_matrix * self.B2N_matrix.T)
+        print(self.B2N_matrix * self.B2N_matrix.T)
         # tmp = (np.eye(3) - cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I
         # print(tmp * tmp.T)
         # self.B2N_matrix = (np.eye(3) + cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I * self.B2N_matrix
@@ -80,14 +82,18 @@ class Status:
         # print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
         print()
-        print('p ' + str(self.position))
-        print('v ' + str(self.velocity))
+        print('p ' + str(self.position.T))
+        print('v ' + str(self.velocity.T))
+        print('a ' + str(array2matrix(frame.get_accs()).T))
         print('rotation' + str(self.B2N_matrix))
         # print('a ' + str(accs))
         # print('a-ba ' + str(array2matrix(tmp)))
-        print('C*a ' + str(self.B2N_matrix * array2matrix(tmp)))
-        print('ad ' + str(self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
+        print('C*a' + str((self.B2N_matrix * array2matrix(frame.get_accs())).T))
+        print('C*a ' + str((self.B2N_matrix * array2matrix(tmp)).T))
+        print('ad ' + str((self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])).T))
         print()
+        exp.add_pos(self.position[0, 0] * 12, self.position[1, 0] * 12)
+        exp.add_debug_v(self.delta_k, self.velocity, (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
 
     def next_delta(self, delta_t, frame):
         # (f_nX) * delta_t
@@ -218,7 +224,7 @@ class Status:
         K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
-        y = self.velocity - np.matrix([v_pdr, 0, 0]).T
+        y = self.velocity - np.matrix([0, v_pdr, 0]).T
 
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 
@@ -265,12 +271,12 @@ class Status:
         tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
 
         H = np.matrix([
-            [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, self.B2N_matrix[0, 0], self.B2N_matrix[0, 1], self.B2N_matrix[0, 2]],
-            [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, self.B2N_matrix[1, 0], self.B2N_matrix[1, 1], self.B2N_matrix[1, 2]],
-            [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, self.B2N_matrix[2, 0], self.B2N_matrix[2, 1], self.B2N_matrix[2, 2]]
-            # [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, 0, 0, 0],
-            # [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, 0, 0, 0],
-            # [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, 0, 0, 0]
+            # [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, self.B2N_matrix[0, 0], self.B2N_matrix[0, 1], self.B2N_matrix[0, 2]],
+            # [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, self.B2N_matrix[1, 0], self.B2N_matrix[1, 1], self.B2N_matrix[1, 2]],
+            # [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, self.B2N_matrix[2, 0], self.B2N_matrix[2, 1], self.B2N_matrix[2, 2]]
+            [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, 0, 0, 0]
         ])
 
         # 量测噪声

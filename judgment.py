@@ -26,7 +26,7 @@ class Judgment:
 
     is_first_step = True
 
-    def __init__(self, delta_t, threshold_exp):
+    def __init__(self, delta_t, exp):
         self.N_frames = deque()
         self.Step_acc_frames = deque()
         self.rotations = deque()
@@ -35,7 +35,7 @@ class Judgment:
         self.Win_angle_frames = deque()
         self.step_detector = StepDetector()
         self.delta_t = delta_t
-        self.threshold_exp = threshold_exp
+        self.exp = exp
 
     def judge(self, frame):
         self.frame = frame
@@ -63,14 +63,14 @@ class Judgment:
             sum_acc_delta = 0
             for frame in self.N_frames:
                 sum_acc_delta += sum(math.pow(frame.get_accs()[i] - avg_acc[i], 2) for i in range(3))
-            self.threshold_exp.add_sum_delta(sum_acc_delta)
+            self.exp.add_sum_delta(sum_acc_delta)
 
             sum_gyro = 0
             for frame in self.N_frames:
                 sum_gyro += sum(math.pow(frame.get_gyros()[i], 2) for i in range(3))
-            self.threshold_exp.add_sum_gryo(sum_gyro)
+            self.exp.add_sum_gryo(sum_gyro)
 
-            self.threshold_exp.add_res_to_judge((sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N)
+            self.exp.add_res_to_judge((sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N)
             if (sum_acc_delta / math.pow(self.acc_noise, 2) + sum_gyro / math.pow(self.gyro_noise, 2)) / self.N < self.gama:
                 return True
             else:
@@ -95,9 +95,10 @@ class Judgment:
         return step_length, step_speed
 
     def calculate_step_length(self):
-        max_value = self.Step_acc_frames[0]
-        min_value = self.Step_acc_frames[0]
-        for v in self.Step_acc_frames:
+        max_value = np.linalg.norm(np.array(self.Step_acc_frames[0]))
+        min_value = np.linalg.norm(np.array(self.Step_acc_frames[0]))
+        for item in self.Step_acc_frames:
+            v = np.linalg.norm(item)
             min_value = v if v < min_value else min_value
             max_value = v if v > max_value else max_value
         return math.pow(max_value-min_value, 1/4)
@@ -124,14 +125,14 @@ class Judgment:
             gyros.append((self.rotations[i] * np.matrix(self.Win_gyr_frames[i]).T)[2, 0])
         avg = np.mean(np.array(gyros))
 
-        self.threshold_exp.add_avg_gyo(avg)
+        self.exp.add_avg_gyo(avg)
 
         tmp = list(self.Win_angle_frames)
         diff = (tmp[self.Win_size - 1] - tmp[0]) / ((self.Win_size - 1) * self.delta_t)
 
-        self.threshold_exp.add_mag_gyo(diff)
+        self.exp.add_mag_gyo(diff)
 
-        self.threshold_exp.add_mag_res(math.fabs(avg - diff))
+        self.exp.add_mag_res(math.fabs(avg - diff))
         print('list' + str(tmp))
         print(str(diff))
         print(first_epoch_mag)
