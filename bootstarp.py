@@ -14,12 +14,14 @@ last_step_time = 0
 pos = None
 first_epoch_mag = None
 first_epoch_rotation = None
+step_count = 0
 
 
 def process(status, frame, judgment):
     global pos
     global first_epoch_mag
     global first_epoch_rotation
+    global step_count
 
     exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
     # predict
@@ -33,16 +35,22 @@ def process(status, frame, judgment):
         #     first_epoch_rotation = status.get_rotation_matrix()
         # else:
         #     status.correct_by_zaru(first_epoch_rotation)
-        pos = status.get_pos()
     else:
         first_epoch_rotation = None
         step_length, step_speed = judgment.new_step()
         if step_length > 0:
-            if judgment.in_a_swing():
-                pos = status.correct_by_step_length(step_length, pos)
+            if step_speed == 0:
+                if pos == 0:
+                    pos = status.get_pos()
+                else:
+                    pos = status.correct_by_step_length(step_length, pos)
             else:
+                step_count = step_count + 1
+                pos = 0
                 # can we also update pos here ?
                 status.correct_by_velocity(step_speed)
+        else:
+            pos = 0
 
     if judgment.low_dynamic():
         status.correct_by_gravity(frame)
@@ -73,7 +81,7 @@ if __name__ == '__main__':
     delta_v = [0, 0, 0]
     delta_ap = [0, 0, 0]
     bg = [0, 0, 0]
-    ba = [0, 0.015, 0.015]
+    ba = [0, 0, 0.03]
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
 
@@ -83,8 +91,9 @@ if __name__ == '__main__':
         if frame is None:
             break
         elif np.linalg.norm(np.array(frame.get_accs())) > 9:
-        #     flag = 1
-        # if flag == 1:
+            flag = 1
+        if flag == 1:
             process(status, frame, judgment)
 
+    print("Step Count: " + str(step_count))
     exp.show()

@@ -14,10 +14,10 @@ class Judgment:
     # gyroscope noise
     gyro_noise = 0.5
     # quasi static judgment parameter
-    gama = 1 / N
+    gama = 2 / N
     
     # variance of acceleration
-    va = 2
+    va = 5
 
     # window size of mag
     Win_size = 10
@@ -89,7 +89,7 @@ class Judgment:
             # else:
             step_length = self.calculate_step_length()
             is_swing = self.in_a_swing()
-            if is_swing:
+            if not is_swing:
                 step_speed = step_length / (len(self.Step_acc_frames) * self.delta_t)
             self.Step_acc_frames.clear()
         return step_length, step_speed
