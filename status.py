@@ -24,6 +24,7 @@ class Status:
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
         self.velocity = array2matrix(velocity)
+        self.q = np.matrix([1, 0, 0, 0]).T
         self.B2N_matrix = rotation_matrix
 
         # self.delta_p = delta_p
@@ -48,25 +49,50 @@ class Status:
         gyros = frame.get_gyros()
         tmp = [gyros[0] - self.bias[3, 0], gyros[1] - self.bias[4, 0], gyros[2] - self.bias[5, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
-        self.B2N_matrix = self.B2N_matrix + self.B2N_matrix * cross_product(tmp) * delta_t
-        # # C = (I - cross_product(delta_ap))^-1 * C
-        print(self.B2N_matrix * self.B2N_matrix.T)
-        # tmp = (np.eye(3) - cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I
-        # print(tmp * tmp.T)
-        # self.B2N_matrix = (np.eye(3) + cross_product([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])).I * self.B2N_matrix
-        # # self.B2N_matrix = self.B2N_matrix / np.linalg.norm(self.B2N_matrix)
-        # print('r*r.T ' + str(self.B2N_matrix * (self.B2N_matrix.T)))
-        # print()
+        # self.B2N_matrix = self.B2N_matrix + self.B2N_matrix * cross_product(tmp) * delta_t
+        ts = 0.01
+        th = np.linalg.norm(tmp) * ts
+        omg = np.matrix([[0, -tmp[0], -tmp[1], -tmp[2]],
+                         [tmp[0], 0, tmp[2], -tmp[1]],
+                         [tmp[1], -tmp[2], 0, tmp[0]],
+                         [tmp[2], tmp[1], -tmp[0], 0]])
+        self.q = (np.eye(4) * math.cos(0.5 * th) + ts * omg * math.sin(0.5 * th) / th) * self.q
+        self.q = self.q / np.linalg.norm(self.q)
+
         # rotation matrix of attitude error
         error_vector = array2matrix([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])
         error_mod = np.linalg.norm(error_vector)
         if error_mod != 0:
             error_vector = error_vector / error_mod
-            error_rotation = (1 - math.cos(error_mod)) * error_vector * error_vector.T + math.cos(error_mod) * np.eye(3) - math.sin(error_mod) * cross_product(error_vector)
-            # print(error_rotation)
-            # print(error_rotation * error_rotation.T)
-            self.B2N_matrix = error_rotation.T * self.B2N_matrix
-            # print(self.B2N_matrix * self.B2N_matrix.T)
+            error_q = np.matrix([math.cos(error_mod / 2),
+                       error_vector[0, 0] * math.sin(error_mod / 2),
+                       error_vector[1, 0] * math.sin(error_mod / 2),
+                       error_vector[2, 0] * math.sin(error_mod / 2)]).T
+            # # tmp = math.pow(np.linalg.norm(error_q), 2)
+            # error_q_I = [error_q[0], -error_q[0], -error_q[1], -error_q[2]]
+            # self.q = error_q_I * self.q
+            # self.q = np.matrix([error_q_I[0] * self.q[0, 0] - error_q_I[1] * self.q[1, 0] - error_q_I[2] * self.q[2, 0] - error_q_I[3] * self.q[3, 0],
+            #                        error_q_I[0] * self.q[1, 0] + error_q_I[1] * self.q[0, 0] - error_q_I[2] * self.q[3, 0] - error_q_I[3] * self.q[2, 0],
+            #                        error_q_I[0] * self.q[2, 0] - error_q_I[1] * self.q[3, 0] + error_q_I[2] * self.q[0, 0] + error_q_I[3] * self.q[1, 0],
+            #                        error_q_I[0] * self.q[3, 0] + error_q_I[1] * self.q[2, 0] - error_q_I[2] * self.q[1, 0] + error_q_I[3] * self.q[0, 0]]).T
+            self.q = self.q - error_q
+
+        self.q = self.q / np.linalg.norm(self.q)
+        self.B2N_matrix = np.matrix([
+            # [1 - 2*self.q[2,0]*self.q[2,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[1,0]*self.q[2,0] - 2*self.q[0,0]*self.q[3,0], 2*self.q[1,0]*self.q[3,0] + 2*self.q[0,0]*self.q[2,0]],
+            # [2*self.q[1,0]*self.q[2,0] + 2*self.q[0,0]*self.q[3,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[2,0]*self.q[3,0] - 2*self.q[0,0]*self.q[1,0]],
+            # [2*self.q[1,0]*self.q[3,0] - 2*self.q[0,0]*self.q[2,0], 2*self.q[2,0]*self.q[3,0] + 2*self.q[0,0]*self.q[1,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[2,0]*self.q[2,0]]
+            [self.q[0, 0] * self.q[0, 0] + self.q[1, 0] * self.q[1, 0] - self.q[2, 0] * self.q[2, 0] - self.q[3, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[2, 0] - 2 * self.q[0, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[2, 0]],
+            [2 * self.q[1, 0] * self.q[2, 0] + 2 * self.q[0, 0] * self.q[3, 0],
+             self.q[0, 0] * self.q[0, 0] - self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0] - self.q[3, 0] *self.q[3, 0],
+             2 * self.q[2, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[1, 0]],
+            [2 * self.q[1, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[2, 0],
+             2 * self.q[2, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[1, 0],
+             self.q[0, 0] * self.q[0, 0] - self.q[1, 0] * self.q[1, 0] - self.q[2, 0] * self.q[2, 0] + self.q[3, 0] *self.q[3, 0]]
+        ])
+        print(self.B2N_matrix * self.B2N_matrix.T)
 
         # f - ba
         accs = frame.get_accs()
