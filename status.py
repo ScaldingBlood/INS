@@ -69,29 +69,32 @@ class Status:
                        error_vector[0, 0] * math.sin(error_mod / 2),
                        error_vector[1, 0] * math.sin(error_mod / 2),
                        error_vector[2, 0] * math.sin(error_mod / 2)]).T
-            # # tmp = math.pow(np.linalg.norm(error_q), 2)
-            # error_q_I = [error_q[0], -error_q[0], -error_q[1], -error_q[2]]
-            # self.q = error_q_I * self.q
-            # self.q = np.matrix([error_q_I[0] * self.q[0, 0] - error_q_I[1] * self.q[1, 0] - error_q_I[2] * self.q[2, 0] - error_q_I[3] * self.q[3, 0],
-            #                        error_q_I[0] * self.q[1, 0] + error_q_I[1] * self.q[0, 0] - error_q_I[2] * self.q[3, 0] - error_q_I[3] * self.q[2, 0],
-            #                        error_q_I[0] * self.q[2, 0] - error_q_I[1] * self.q[3, 0] + error_q_I[2] * self.q[0, 0] + error_q_I[3] * self.q[1, 0],
-            #                        error_q_I[0] * self.q[3, 0] + error_q_I[1] * self.q[2, 0] - error_q_I[2] * self.q[1, 0] + error_q_I[3] * self.q[0, 0]]).T
-            self.q = self.q - error_q
+            error_q_v = [error_q[0, 0], error_q[1, 0], error_q[2, 0], error_q[3, 0]]
+            # self.q = error_q_v * self.q
+            self.q = np.matrix([error_q_v[0] * self.q[0, 0] - error_q_v[1] * self.q[1, 0] - error_q_v[2] * self.q[2, 0] - error_q_v[3] * self.q[3, 0],
+                                   error_q_v[0] * self.q[1, 0] + error_q_v[1] * self.q[0, 0] - error_q_v[2] * self.q[3, 0] - error_q_v[3] * self.q[2, 0],
+                                   error_q_v[0] * self.q[2, 0] - error_q_v[1] * self.q[3, 0] + error_q_v[2] * self.q[0, 0] + error_q_v[3] * self.q[1, 0],
+                                   error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[1, 0] + error_q_v[3] * self.q[0, 0]]).T
+            self.q = self.q / np.linalg.norm(self.q)
 
-        self.q = self.q / np.linalg.norm(self.q)
+        tmp_q = self.q / np.linalg.norm(self.q)
+        exp.add_angle([math.atan2(2 * (tmp_q[0, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[3, 0]), (1 - 2 * (tmp_q[1, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[2, 0]))) * 180 / math.pi,
+                       math.asin(2 * (tmp_q[0, 0] * tmp_q[2, 0] - tmp_q[1, 0] * tmp_q[3, 0])) * 180 / math.pi,
+                       math.atan2(2 * (tmp_q[0, 0] * tmp_q[3, 0] + tmp_q[1, 0] * tmp_q[2, 0]), (1 - 2 * (tmp_q[2, 0] * tmp_q[2, 0] + tmp_q[3, 0] * tmp_q[3, 0]))) * 180 / math.pi])
+
         self.B2N_matrix = np.matrix([
             # [1 - 2*self.q[2,0]*self.q[2,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[1,0]*self.q[2,0] - 2*self.q[0,0]*self.q[3,0], 2*self.q[1,0]*self.q[3,0] + 2*self.q[0,0]*self.q[2,0]],
             # [2*self.q[1,0]*self.q[2,0] + 2*self.q[0,0]*self.q[3,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[2,0]*self.q[3,0] - 2*self.q[0,0]*self.q[1,0]],
             # [2*self.q[1,0]*self.q[3,0] - 2*self.q[0,0]*self.q[2,0], 2*self.q[2,0]*self.q[3,0] + 2*self.q[0,0]*self.q[1,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[2,0]*self.q[2,0]]
-            [self.q[0, 0] * self.q[0, 0] + self.q[1, 0] * self.q[1, 0] - self.q[2, 0] * self.q[2, 0] - self.q[3, 0] * self.q[3, 0],
-             2 * self.q[1, 0] * self.q[2, 0] - 2 * self.q[0, 0] * self.q[3, 0],
-             2 * self.q[1, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[2, 0]],
-            [2 * self.q[1, 0] * self.q[2, 0] + 2 * self.q[0, 0] * self.q[3, 0],
-             self.q[0, 0] * self.q[0, 0] - self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0] - self.q[3, 0] *self.q[3, 0],
-             2 * self.q[2, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[1, 0]],
-            [2 * self.q[1, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[2, 0],
-             2 * self.q[2, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[1, 0],
-             self.q[0, 0] * self.q[0, 0] - self.q[1, 0] * self.q[1, 0] - self.q[2, 0] * self.q[2, 0] + self.q[3, 0] *self.q[3, 0]]
+            [tmp_q[0, 0] * tmp_q[0, 0] + tmp_q[1, 0] * tmp_q[1, 0] - tmp_q[2, 0] * tmp_q[2, 0] - tmp_q[3, 0] * tmp_q[3, 0],
+             2 * self.q[1, 0] * tmp_q[2, 0] - 2 * tmp_q[0, 0] * tmp_q[3, 0],
+             2 * tmp_q[1, 0] * tmp_q[3, 0] + 2 * tmp_q[0, 0] * tmp_q[2, 0]],
+            [2 * tmp_q[1, 0] * tmp_q[2, 0] + 2 * tmp_q[0, 0] * tmp_q[3, 0],
+             tmp_q[0, 0] * tmp_q[0, 0] - tmp_q[1, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[2, 0] - tmp_q[3, 0] *tmp_q[3, 0],
+             2 * tmp_q[2, 0] * tmp_q[3, 0] - 2 * tmp_q[0, 0] * tmp_q[1, 0]],
+            [2 * tmp_q[1, 0] * tmp_q[3, 0] - 2 * tmp_q[0, 0] * tmp_q[2, 0],
+             2 * tmp_q[2, 0] * tmp_q[3, 0] + 2 * tmp_q[0, 0] * tmp_q[1, 0],
+             tmp_q[0, 0] * tmp_q[0, 0] - tmp_q[1, 0] * tmp_q[1, 0] - tmp_q[2, 0] * tmp_q[2, 0] + tmp_q[3, 0] *tmp_q[3, 0]]
         ])
         print(self.B2N_matrix * self.B2N_matrix.T)
 

@@ -23,6 +23,10 @@ class Experiment:
     a = []
     v_minus_delta_v = []
 
+    angle_a = []
+    angle_b = []
+    angle_c = []
+
     def add_avg_acc(self, acc):
         self.avg_acc_list.append(acc)
 
@@ -57,6 +61,11 @@ class Experiment:
         self.v_minus_delta_v.append(v)
         self.a.append(a)
 
+    def add_angle(self, a):
+        self.angle_a.append(a[0])
+        self.angle_b.append(a[1])
+        self.angle_c.append(a[2])
+
     def show(self):
         # plt.figure()
         # t = np.arange(0, len(self.res_to_judge) * 0.01, 0.01)
@@ -83,41 +92,47 @@ class Experiment:
         plt.show()
 
 
-        # pure INS
-        plt.figure()
-        t = np.arange(0, len(self.acc_x) * 0.01, 0.01)
-        plt.plot(t, self.acc_x, 'r:', t, self.acc_y, 'b:')
-        plt.figure()
-        v_x, v_y = [0], [0]
-        for a in self.acc_x:
-            v_x.append(v_x[len(v_x) - 1] + a * 0.01)
-        for a in self.acc_y:
-            v_y.append(v_y[len(v_y) - 1] + a * 0.01)
-        plt.plot(t, v_x[1:], "r:", t, v_y[1:], "b:")
-        p_x, p_y = [0], [0]
-        plt.figure()
-        for v in v_x[1:]:
-            p_x.append(p_x[len(p_x) - 1] + v * 0.01)
-        for v in v_y[1:]:
-            p_y.append(p_y[len(p_y) - 1] + v * 0.01)
-        plt.plot(t, p_x[1:], "r:", t, p_y[1:], "b:")
+        # angle of three axises
+        plt.figure('angle')
+        t = np.arange(0, len(self.angle_a) * 0.01, 0.01)
+        plt.plot(t, self.angle_a, "r:", t, self.angle_b, "g:", t, self.angle_c, "b:")
         plt.show()
+
+        # pure INS
+        # plt.figure()
+        # t = np.arange(0, len(self.acc_x) * 0.01, 0.01)
+        # plt.plot(t, self.acc_x, 'r:', t, self.acc_y, 'b:')
+        # plt.figure()
+        # v_x, v_y = [0], [0]
+        # for a in self.acc_x:
+        #     v_x.append(v_x[len(v_x) - 1] + a * 0.01)
+        # for a in self.acc_y:
+        #     v_y.append(v_y[len(v_y) - 1] + a * 0.01)
+        # plt.plot(t, v_x[1:], "r:", t, v_y[1:], "b:")
+        # p_x, p_y = [0], [0]
+        # plt.figure()
+        # for v in v_x[1:]:
+        #     p_x.append(p_x[len(p_x) - 1] + v * 0.01)
+        # for v in v_y[1:]:
+        #     p_y.append(p_y[len(p_y) - 1] + v * 0.01)
+        # plt.plot(t, p_x[1:], "r:", t, p_y[1:], "b:")
+        # plt.show()
 
 
         # debug delta_v
-        plt.figure()
-        t = np.arange(0, len(self.delta_v)* 0.01, 0.01)
-        plt.plot(t, [item[3, 0] for item in self.delta_v], 'r:', t, [item[4, 0] for item in self.delta_v], 'g:'
-                 , t, [item[5, 0] for item in self.delta_v], 'b:')
-
-        plt.figure()
-        t = np.arange(0, len(self.a) * 0.01, 0.01)
-        plt.plot(t, [item[0, 0] for item in self.a], 'r:', t, [item[1, 0] for item in self.a], 'g:'
-                 , t, [item[2, 0] for item in self.a], 'b:')
-
-        plt.figure()
-        plt.plot(t, [item[0, 0] for item in self.v_minus_delta_v], 'r:', t, [item[1, 0] for item in self.v_minus_delta_v], 'g:',
-                 t, [item[2, 0] for item in self.v_minus_delta_v], 'b:')
-        plt.show()
+        # plt.figure()
+        # t = np.arange(0, len(self.delta_v)* 0.01, 0.01)
+        # plt.plot(t, [item[3, 0] for item in self.delta_v], 'r:', t, [item[4, 0] for item in self.delta_v], 'g:'
+        #          , t, [item[5, 0] for item in self.delta_v], 'b:')
+        #
+        # plt.figure()
+        # t = np.arange(0, len(self.a) * 0.01, 0.01)
+        # plt.plot(t, [item[0, 0] for item in self.a], 'r:', t, [item[1, 0] for item in self.a], 'g:'
+        #          , t, [item[2, 0] for item in self.a], 'b:')
+        #
+        # plt.figure()
+        # plt.plot(t, [item[0, 0] for item in self.v_minus_delta_v], 'r:', t, [item[1, 0] for item in self.v_minus_delta_v], 'g:',
+        #          t, [item[2, 0] for item in self.v_minus_delta_v], 'b:')
+        # plt.show()
 
 
