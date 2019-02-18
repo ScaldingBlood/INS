@@ -49,7 +49,6 @@ class Status:
         gyros = frame.get_gyros()
         tmp = [gyros[0] - self.bias[3, 0], gyros[1] - self.bias[4, 0], gyros[2] - self.bias[5, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
-        ts = 0.01
         # th = np.linalg.norm(tmp) * ts
         omg = np.matrix([[0, -tmp[0], -tmp[1], -tmp[2]],
                          [tmp[0], 0, tmp[2], -tmp[1]],
@@ -58,7 +57,7 @@ class Status:
         # if th != 0:
         #     self.q = (np.eye(4) * math.cos(0.5 * th) + ts * omg * math.sin(0.5 * th) / th) * self.q
         #     self.q = self.q / np.linalg.norm(self.q)
-        self.q = self.q + 0.5 * omg * self.q * ts
+        self.q = self.q + 0.5 * omg * self.q * delta_t
         self.q = self.q / np.linalg.norm(self.q)
 
         # rotation matrix of attitude error
