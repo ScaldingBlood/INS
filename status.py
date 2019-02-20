@@ -49,16 +49,16 @@ class Status:
         gyros = frame.get_gyros()
         tmp = [gyros[0] - self.bias[3, 0], gyros[1] - self.bias[4, 0], gyros[2] - self.bias[5, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
-        # th = np.linalg.norm(tmp) * ts
+        th = np.linalg.norm(tmp) * delta_t
         omg = np.matrix([[0, -tmp[0], -tmp[1], -tmp[2]],
                          [tmp[0], 0, tmp[2], -tmp[1]],
                          [tmp[1], -tmp[2], 0, tmp[0]],
                          [tmp[2], tmp[1], -tmp[0], 0]])
-        # if th != 0:
-        #     self.q = (np.eye(4) * math.cos(0.5 * th) + ts * omg * math.sin(0.5 * th) / th) * self.q
-        #     self.q = self.q / np.linalg.norm(self.q)
-        self.q = self.q + 0.5 * omg * self.q * delta_t
-        self.q = self.q / np.linalg.norm(self.q)
+        if th != 0:
+            self.q = (np.eye(4) * math.cos(0.5 * th) + delta_t * omg * math.sin(0.5 * th) / th) * self.q
+            self.q = self.q / np.linalg.norm(self.q)
+        # self.q = self.q + 0.5 * omg * self.q * delta_t
+        # self.q = self.q / np.linalg.norm(self.q)
 
         # rotation matrix of attitude error
         error_vector = array2matrix([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])
@@ -72,29 +72,19 @@ class Status:
             error_q_v = [error_q[0, 0], error_q[1, 0], error_q[2, 0], error_q[3, 0]]
             # self.q = error_q_v * self.q
             self.q = np.matrix([error_q_v[0] * self.q[0, 0] - error_q_v[1] * self.q[1, 0] - error_q_v[2] * self.q[2, 0] - error_q_v[3] * self.q[3, 0],
-                                   error_q_v[0] * self.q[1, 0] + error_q_v[1] * self.q[0, 0] - error_q_v[2] * self.q[3, 0] - error_q_v[3] * self.q[2, 0],
+                                   error_q_v[0] * self.q[1, 0] + error_q_v[1] * self.q[0, 0] + error_q_v[2] * self.q[3, 0] - error_q_v[3] * self.q[2, 0],
                                    error_q_v[0] * self.q[2, 0] - error_q_v[1] * self.q[3, 0] + error_q_v[2] * self.q[0, 0] + error_q_v[3] * self.q[1, 0],
                                    error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[1, 0] + error_q_v[3] * self.q[0, 0]]).T
             self.q = self.q / np.linalg.norm(self.q)
 
-        tmp_q = self.q / np.linalg.norm(self.q)
-        exp.add_angle([math.atan2(2 * (tmp_q[0, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[3, 0]), (1 - 2 * (tmp_q[1, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[2, 0]))) * 180 / math.pi,
-                       math.asin(2 * (tmp_q[0, 0] * tmp_q[2, 0] - tmp_q[1, 0] * tmp_q[3, 0])) * 180 / math.pi,
-                       math.atan2(2 * (tmp_q[0, 0] * tmp_q[3, 0] + tmp_q[1, 0] * tmp_q[2, 0]), (1 - 2 * (tmp_q[2, 0] * tmp_q[2, 0] + tmp_q[3, 0] * tmp_q[3, 0]))) * 180 / math.pi])
+        exp.add_angle([math.atan2(2 * (self.q[0, 0] * self.q[1, 0] + self.q[2, 0] * self.q[3, 0]), (1 - 2 * (self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0]))) * 180 / math.pi,
+                       math.asin(2 * (self.q[0, 0] * self.q[2, 0] - self.q[1, 0] * self.q[3, 0])) * 180 / math.pi,
+                       math.atan2(2 * (self.q[0, 0] * self.q[3, 0] + self.q[1, 0] * self.q[2, 0]), (1 - 2 * (self.q[2, 0] * self.q[2, 0] + self.q[3, 0] * self.q[3, 0]))) * 180 / math.pi])
 
         self.B2N_matrix = np.matrix([
-            # [1 - 2*self.q[2,0]*self.q[2,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[1,0]*self.q[2,0] - 2*self.q[0,0]*self.q[3,0], 2*self.q[1,0]*self.q[3,0] + 2*self.q[0,0]*self.q[2,0]],
-            # [2*self.q[1,0]*self.q[2,0] + 2*self.q[0,0]*self.q[3,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[2,0]*self.q[3,0] - 2*self.q[0,0]*self.q[1,0]],
-            # [2*self.q[1,0]*self.q[3,0] - 2*self.q[0,0]*self.q[2,0], 2*self.q[2,0]*self.q[3,0] + 2*self.q[0,0]*self.q[1,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[2,0]*self.q[2,0]]
-            [tmp_q[0, 0] * tmp_q[0, 0] + tmp_q[1, 0] * tmp_q[1, 0] - tmp_q[2, 0] * tmp_q[2, 0] - tmp_q[3, 0] * tmp_q[3, 0],
-             2 * self.q[1, 0] * tmp_q[2, 0] - 2 * tmp_q[0, 0] * tmp_q[3, 0],
-             2 * tmp_q[1, 0] * tmp_q[3, 0] + 2 * tmp_q[0, 0] * tmp_q[2, 0]],
-            [2 * tmp_q[1, 0] * tmp_q[2, 0] + 2 * tmp_q[0, 0] * tmp_q[3, 0],
-             tmp_q[0, 0] * tmp_q[0, 0] - tmp_q[1, 0] * tmp_q[1, 0] + tmp_q[2, 0] * tmp_q[2, 0] - tmp_q[3, 0] *tmp_q[3, 0],
-             2 * tmp_q[2, 0] * tmp_q[3, 0] - 2 * tmp_q[0, 0] * tmp_q[1, 0]],
-            [2 * tmp_q[1, 0] * tmp_q[3, 0] - 2 * tmp_q[0, 0] * tmp_q[2, 0],
-             2 * tmp_q[2, 0] * tmp_q[3, 0] + 2 * tmp_q[0, 0] * tmp_q[1, 0],
-             tmp_q[0, 0] * tmp_q[0, 0] - tmp_q[1, 0] * tmp_q[1, 0] - tmp_q[2, 0] * tmp_q[2, 0] + tmp_q[3, 0] *tmp_q[3, 0]]
+            [1 - 2*self.q[2,0]*self.q[2,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[1,0]*self.q[2,0] - 2*self.q[0,0]*self.q[3,0], 2*self.q[1,0]*self.q[3,0] + 2*self.q[0,0]*self.q[2,0]],
+            [2*self.q[1,0]*self.q[2,0] + 2*self.q[0,0]*self.q[3,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[2,0]*self.q[3,0] - 2*self.q[0,0]*self.q[1,0]],
+            [2*self.q[1,0]*self.q[3,0] - 2*self.q[0,0]*self.q[2,0], 2*self.q[2,0]*self.q[3,0] + 2*self.q[0,0]*self.q[1,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[2,0]*self.q[2,0]]
         ])
         print(self.B2N_matrix * self.B2N_matrix.T)
 
@@ -237,7 +227,7 @@ class Status:
         B2L_matrix = np.eye(3)
 
         # N -> B
-        N2B_matrix = self.B2N_matrix.I
+        N2B_matrix = self.B2N_matrix.T
         
         tmp = B2L_matrix * N2B_matrix
         tmp2 = B2L_matrix * N2B_matrix * cross_product([self.velocity[0, 0], self.velocity[1, 0], self.velocity[2, 0]])
@@ -257,7 +247,7 @@ class Status:
 
         # 测量值
         print("speed: " + str(self.B2N_matrix * array2matrix([0, v_pdr, 0])))
-        y = self.velocity - self.B2N_matrix * array2matrix([0, v_pdr, 0])
+        y = B2L_matrix * N2B_matrix * self.velocity - array2matrix([0, v_pdr, 0])
 
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
 

@@ -84,6 +84,7 @@ if __name__ == '__main__':
     ba = [0, 0, 0.03]
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
+    exp.add_pos(x * 12, y * 12)
 
     flag = 0
     while True:
