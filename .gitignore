@@ -116,4 +116,4 @@ dmypy.json
 
 .idea
 .vscode
-data
+data/AHRS_Data*
