@@ -27,6 +27,8 @@ class Experiment:
     angle_b = []
     angle_c = []
 
+    gyro_z = []
+
     def add_avg_acc(self, acc):
         self.avg_acc_list.append(acc)
 
@@ -48,8 +50,13 @@ class Experiment:
     def add_mag_res(self, res):
         self.mag_res_to_judge.append(res)
 
+    flag = True
+    init_x = 0
     def add_pos(self, x, y):
-        self.pos_x.append(x)
+        if self.flag:
+            self.init_x = x
+            self.flag = False
+        self.pos_x.append(self.init_x - (x - self.init_x))
         self.pos_y.append(y)
 
     def add_acc(self, x, y):
@@ -65,6 +72,9 @@ class Experiment:
         self.angle_a.append(a[0])
         self.angle_b.append(a[1])
         self.angle_c.append(a[2])
+
+    def add_gyro(self, g):
+        self.gyro_z.append(g[2, 0])
 
     def show(self):
         # plt.figure()
@@ -88,9 +98,13 @@ class Experiment:
         imgplot = plt.imshow(bgimg)
 
         plt.plot(self.pos_x, self.pos_y, 'r:')
-
         plt.show()
 
+        # gyro of axis-z
+        # plt.figure('gyro-z')
+        # t = np.arange(0, len(self.gyro_z) * 0.01, 0.01)
+        # plt.plot(t, self.gyro_z, "r:")
+        # plt.show()
 
         # angle of three axises
         plt.figure('angle')

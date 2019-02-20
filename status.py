@@ -12,7 +12,7 @@ class Status:
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
     # 测量协方差矩阵R -> 越小越信任量测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.05], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]
 
     # 预测协方差矩阵Q -> 越小越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
     covariance_q = np.eye(9)
@@ -76,6 +76,8 @@ class Status:
                                    error_q_v[0] * self.q[2, 0] - error_q_v[1] * self.q[3, 0] + error_q_v[2] * self.q[0, 0] + error_q_v[3] * self.q[1, 0],
                                    error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[1, 0] + error_q_v[3] * self.q[0, 0]]).T
             self.q = self.q / np.linalg.norm(self.q)
+
+        # exp.add_gyro(self.B2N_matrix * array2matrix(frame.get_gyros()))
 
         exp.add_angle([math.atan2(2 * (self.q[0, 0] * self.q[1, 0] + self.q[2, 0] * self.q[3, 0]), (1 - 2 * (self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0]))) * 180 / math.pi,
                        math.asin(2 * (self.q[0, 0] * self.q[2, 0] - self.q[1, 0] * self.q[3, 0])) * 180 / math.pi,
