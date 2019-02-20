@@ -25,46 +25,14 @@ def process(status, frame, judgment):
 
     exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
     # predict
-    status.next_delta(delta_t, frame)
+    # status.next_delta(delta_t, frame)
 
     # correct
     judgment.judge(frame)
-    if judgment.quasi_static_state():
-        status.correct_by_zupt()
-        # if first_epoch_rotation is None:
-        #     first_epoch_rotation = status.get_rotation_matrix()
-        # else:
-        #     status.correct_by_zaru(first_epoch_rotation)
-    else:
-        first_epoch_rotation = None
-        step_length, step_speed = judgment.new_step()
-        if step_length > 0:
-            if step_speed == 0:
-                if pos == 0:
-                    pos = status.get_pos()
-                else:
-                    pos = status.correct_by_step_length(step_length, pos)
-            else:
-                step_count = step_count + 1
-                pos = 0
-                # can we also update pos here ?
-                status.correct_by_velocity(step_speed)
-        else:
-            pos = 0
-
-    if judgment.low_dynamic():
-        status.correct_by_gravity(frame)
-
-    # if judgment.quasi_static_magnetic(status.get_rotation_matrix(), first_epoch_mag):
-    #     if first_epoch_mag is None:
-    #         first_epoch_mag = status.get_rotation_matrix() * array2matrix(frame.get_mags())
-    #     else:
-    #         status.correct_by_mag(frame, first_epoch_mag)
-    # else:
-    #     first_epoch_mag = None
+    step_length, step_speed = judgment.new_step()
     
     # feedback
-    status.next(delta_t, frame, exp)
+    status.next(delta_t, frame, exp, step_speed)
 
 
 if __name__ == '__main__':
