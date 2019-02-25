@@ -31,7 +31,6 @@ def process(status, frame, judgment):
     judgment.judge(frame)
     if judgment.quasi_static_state():
         status.correct_by_zupt()
-        status.rectify()
         # if first_epoch_rotation is None:
         #     first_epoch_rotation = status.get_rotation_matrix()
         # else:
@@ -50,13 +49,11 @@ def process(status, frame, judgment):
                 pos = 0
                 # can we also update pos here ?
                 status.correct_by_velocity(step_speed)
-                status.rectify()
         else:
             pos = 0
 
     if judgment.low_dynamic():
         status.correct_by_gravity(frame)
-        status.rectify()
 
     # if judgment.quasi_static_magnetic(status.get_rotation_matrix(), first_epoch_mag):
     #     if first_epoch_mag is None:

@@ -76,6 +76,23 @@ class Status:
         # self.q = self.q + 0.5 * omg * self.q * delta_t
         # self.q = self.q / np.linalg.norm(self.q)
 
+        # rotation matrix of attitude error
+        error_vector = array2matrix([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])
+        error_mod = np.linalg.norm(error_vector)
+        if error_mod != 0:
+            error_vector = error_vector / error_mod
+            error_q = np.matrix([math.cos(error_mod / 2),
+                       error_vector[0, 0] * math.sin(error_mod / 2),
+                       error_vector[1, 0] * math.sin(error_mod / 2),
+                       error_vector[2, 0] * math.sin(error_mod / 2)]).T
+            error_q_v = [error_q[0, 0], error_q[1, 0], error_q[2, 0], error_q[3, 0]]
+            # self.q = error_q_v * self.q
+            self.q = np.matrix([error_q_v[0] * self.q[0, 0] - error_q_v[1] * self.q[1, 0] - error_q_v[2] * self.q[2, 0] - error_q_v[3] * self.q[3, 0],
+                                   error_q_v[0] * self.q[1, 0] + error_q_v[1] * self.q[0, 0] + error_q_v[2] * self.q[3, 0] - error_q_v[3] * self.q[2, 0],
+                                   error_q_v[0] * self.q[2, 0] - error_q_v[1] * self.q[3, 0] + error_q_v[2] * self.q[0, 0] + error_q_v[3] * self.q[1, 0],
+                                   error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[1, 0] + error_q_v[3] * self.q[0, 0]]).T
+            self.q = self.q / np.linalg.norm(self.q)
+
         # exp.add_gyro(self.B2N_matrix * array2matrix(frame.get_gyros()))
 
         exp.add_angle([math.atan2(2 * (self.q[0, 0] * self.q[1, 0] + self.q[2, 0] * self.q[3, 0]), (1 - 2 * (self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0]))) * 180 / math.pi,
@@ -94,11 +111,14 @@ class Status:
         tmp = [accs[0] - self.bias[0, 0], accs[1] - self.bias[1, 0], accs[2] - self.bias[2, 0]]
         # v = v + [C * (f - ba) -g] * delta_t
         self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
+        self.velocity = self.velocity - array2matrix([self.delta_k[3, 0], self.delta_k[4, 0], self.delta_k[5, 0]])
 
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
         # print(self.position)
+        self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
 
+        # self.delta_k = np.matrix([0,0,0,0,0,0,0,0,0]).T
         print()
         print('p ' + str(self.position.T))
         print('v ' + str(self.velocity.T))
@@ -112,44 +132,6 @@ class Status:
         print()
         exp.add_pos(self.position[0, 0] * 12, self.position[1, 0] * 12)
         exp.add_debug_v(self.delta_k, self.velocity, (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
-
-    def rectify(self):
-        # rotation matrix of attitude error
-        error_vector = array2matrix([self.delta_k[6, 0], self.delta_k[7, 0], self.delta_k[8, 0]])
-        error_mod = np.linalg.norm(error_vector)
-        if error_mod != 0:
-            error_vector = error_vector / error_mod
-            error_q = np.matrix([math.cos(error_mod / 2),
-                                 error_vector[0, 0] * math.sin(error_mod / 2),
-                                 error_vector[1, 0] * math.sin(error_mod / 2),
-                                 error_vector[2, 0] * math.sin(error_mod / 2)]).T
-            error_q_v = [error_q[0, 0], error_q[1, 0], error_q[2, 0], error_q[3, 0]]
-            # self.q = error_q_v * self.q
-            self.q = np.matrix([error_q_v[0] * self.q[0, 0] - error_q_v[1] * self.q[1, 0] - error_q_v[2] * self.q[
-                2, 0] - error_q_v[3] * self.q[3, 0],
-                                error_q_v[0] * self.q[1, 0] + error_q_v[1] * self.q[0, 0] + error_q_v[2] * self.q[
-                                    3, 0] - error_q_v[3] * self.q[2, 0],
-                                error_q_v[0] * self.q[2, 0] - error_q_v[1] * self.q[3, 0] + error_q_v[2] * self.q[
-                                    0, 0] + error_q_v[3] * self.q[1, 0],
-                                error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[
-                                    1, 0] + error_q_v[3] * self.q[0, 0]]).T
-            self.q = self.q / np.linalg.norm(self.q)
-        self.B2N_matrix = np.matrix([
-            [1 - 2 * self.q[2, 0] * self.q[2, 0] - 2 * self.q[3, 0] * self.q[3, 0],
-             2 * self.q[1, 0] * self.q[2, 0] - 2 * self.q[0, 0] * self.q[3, 0],
-             2 * self.q[1, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[2, 0]],
-            [2 * self.q[1, 0] * self.q[2, 0] + 2 * self.q[0, 0] * self.q[3, 0],
-             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[3, 0] * self.q[3, 0],
-             2 * self.q[2, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[1, 0]],
-            [2 * self.q[1, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[2, 0],
-             2 * self.q[2, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[1, 0],
-             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[2, 0] * self.q[2, 0]]
-        ])
-
-        self.velocity = self.velocity - array2matrix([self.delta_k[3, 0], self.delta_k[4, 0], self.delta_k[5, 0]])
-        self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
-        self.delta_k = np.matrix([0,0,0,0,0,0,0,0,0]).T
-
 
     def next_delta(self, delta_t, frame):
         # (f_nX) * delta_t
@@ -178,17 +160,17 @@ class Status:
             # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0],
             # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0],
             # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1]
-            [1, 0, 0, delta_t, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, delta_t, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, delta_t, 0, 0, 0],
+            [0, 0, 0, delta_t, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, delta_t, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, delta_t, 0, 0, 0],
 
-            [0, 0, 0, 1, 0, 0, fnt[0, 0], fnt[0, 1], fnt[0, 1]],
-            [0, 0, 0, 0, 1, 0, fnt[1, 0], fnt[1, 1], fnt[1, 2]],
-            [0, 0, 0, 0, 0, 1, fnt[2, 0], fnt[2, 1], fnt[2, 2]],
+            [0, 0, 0, 0, 0, 0, fnt[0, 0], fnt[0, 1], fnt[0, 1]],
+            [0, 0, 0, 0, 0, 0, fnt[1, 0], fnt[1, 1], fnt[1, 2]],
+            [0, 0, 0, 0, 0, 0, fnt[2, 0], fnt[2, 1], fnt[2, 2]],
 
-            [0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
         ])
 
         bias_updater = np.matrix([
