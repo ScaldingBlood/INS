@@ -11,19 +11,19 @@ class Status:
     # w_p,w_v,w_ap,w_bg,w_ba = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01]
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
-    # 测量协方差矩阵R -> 越小越信任量测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.15, 0.15, 0.15], [0.12, 0.12, 0.12], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]
+    # 测量协方差矩阵R -> 越小越信任观测，稳态噪声（重要！）
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.1, 0.1], [0.01, 0.01, 0.01]
 
     # 预测协方差矩阵Q -> 越小越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
     covariance_q = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
                               [0, 1, 0, 0, 0, 0, 0, 0, 0],
                               [0, 0, 1, 0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 2, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 2, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 2, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0.005, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0.005, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0, 0.005]])
+                              [0, 0, 0, 3, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 3, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 3, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0.03, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0.03, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0, 0.03]])
 
     # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
     covariance = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -34,7 +34,7 @@ class Status:
                               [0, 0, 0, 0, 0, 1, 0, 0, 0],
                               [0, 0, 0, 0, 0, 0, 1, 0, 0],
                               [0, 0, 0, 0, 0, 0, 0, 1, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0, 1]])
+                              [0, 0, 0, 0, 0, 0, 0, 0, 1]]) * 0.1
     # ---------------------------------------------------------------------------------------------------------------------------------
 
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
@@ -52,7 +52,7 @@ class Status:
             delta_p[0], delta_p[1], delta_p[2],
             delta_v[0], delta_v[1], delta_v[2],
             delta_ap[0], delta_ap[1], delta_ap[2]]).T
-        self.bias = np.matrix([ba[0], ba[1], ba[2], bg[0], bg[1], bg[2]]).T
+        self.bias = np.matrix([bg[0], bg[1], bg[2], ba[0], ba[1], ba[2]]).T
 
     def get_pos(self):
         return self.position
@@ -63,7 +63,7 @@ class Status:
     def next(self, delta_t, frame, exp):
         # w - bg
         gyros = frame.get_gyros()
-        tmp = [gyros[0] - self.bias[3, 0], gyros[1] - self.bias[4, 0], gyros[2] - self.bias[5, 0]]
+        tmp = [gyros[0] - self.bias[0, 0], gyros[1] - self.bias[1, 0], gyros[2] - self.bias[2, 0]]
         # C = C + C * cross_product[(w - bg) * delta_t]
         th = np.linalg.norm(tmp) * delta_t
         omg = np.matrix([[0, -tmp[0], -tmp[1], -tmp[2]],
@@ -108,7 +108,7 @@ class Status:
 
         # f - ba
         accs = frame.get_accs()
-        tmp = [accs[0] - self.bias[0, 0], accs[1] - self.bias[1, 0], accs[2] - self.bias[2, 0]]
+        tmp = [accs[0] - self.bias[3, 0], accs[1] - self.bias[4, 0], accs[2] - self.bias[5, 0]]
         # v = v + [C * (f - ba) -g] * delta_t
         self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
         self.velocity = self.velocity - array2matrix([self.delta_k[3, 0], self.delta_k[4, 0], self.delta_k[5, 0]])
@@ -122,11 +122,11 @@ class Status:
         print()
         print('p ' + str(self.position.T))
         print('v ' + str(self.velocity.T))
-        print('a ' + str(array2matrix(frame.get_accs()).T))
         print('rotation' + str(self.B2N_matrix))
         # print('a ' + str(accs))
         # print('a-ba ' + str(array2matrix(tmp)))
-        print('C*a' + str((self.B2N_matrix * array2matrix(frame.get_accs())).T))
+        # print('C*a' + str((self.B2N_matrix * array2matrix(frame.get_accs())).T))
+        print('a ' + str(array2matrix(frame.get_accs()).T))
         print('C*a ' + str((self.B2N_matrix * array2matrix(tmp)).T))
         print('ad ' + str((self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])).T))
         print()
@@ -177,12 +177,12 @@ class Status:
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
-            [ct[0, 0], ct[0, 1], ct[0, 2], 0, 0, 0],
-            [ct[1, 0], ct[1, 1], ct[1, 2], 0, 0, 0],
-            [ct[2, 0], ct[2, 1], ct[2, 2], 0, 0, 0],
-            [0, 0, 0, -ct[0, 0], -ct[0, 1], -ct[0, 2]],
-            [0, 0, 0, -ct[1, 0], -ct[1, 1], -ct[1, 2]],
-            [0, 0, 0, -ct[2, 0], -ct[2, 1], -ct[2, 2]],
+            [0, 0, 0, ct[0, 0], ct[0, 1], ct[0, 2]],
+            [0, 0, 0, ct[1, 0], ct[1, 1], ct[1, 2]],
+            [0, 0, 0, ct[2, 0], ct[2, 1], ct[2, 2]],
+            [-ct[0, 0], -ct[0, 1], -ct[0, 2], 0, 0, 0],
+            [-ct[1, 0], -ct[1, 1], -ct[1, 2], 0, 0, 0],
+            [-ct[2, 0], -ct[2, 1], -ct[2, 2], 0, 0, 0],
         ])
 
         self.delta_k = updater * self.delta_k + bias_updater * self.bias

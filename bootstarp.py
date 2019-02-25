@@ -80,8 +80,8 @@ if __name__ == '__main__':
     delta_p = [0, 0, 0]
     delta_v = [0, 0, 0]
     delta_ap = [0, 0, 0]
-    bg = [0, 0, 0]
-    ba = [0, 0, 0.03]
+    bg = [0.0003, 0.0003, 0.0003]
+    ba = [0.02, 0.15, -0.17]
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
     exp.add_pos(x * 12, y * 12)
