@@ -40,8 +40,21 @@ class Status:
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
         self.velocity = array2matrix(velocity)
-        self.q = np.matrix([1, 0, 0, 0]).T
-        self.B2N_matrix = rotation_matrix
+        alpha = 0.09355373656573884 / 2
+        self.q = np.matrix([math.cos(alpha), 0, 0, math.sin(alpha)]).T
+        # self.q = np.matrix([1, 0, 0, 0]).T
+        self.B2N_matrix = np.matrix([
+            [1 - 2 * self.q[2, 0] * self.q[2, 0] - 2 * self.q[3, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[2, 0] - 2 * self.q[0, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[2, 0]],
+            [2 * self.q[1, 0] * self.q[2, 0] + 2 * self.q[0, 0] * self.q[3, 0],
+             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[3, 0] * self.q[3, 0],
+             2 * self.q[2, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[1, 0]],
+            [2 * self.q[1, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[2, 0],
+             2 * self.q[2, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[1, 0],
+             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[2, 0] * self.q[2, 0]]
+        ])
+        # self.B2N_matrix = rotation_matrix
 
         # self.delta_p = delta_p
         # self.delta_v = delta_v
