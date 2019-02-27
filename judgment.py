@@ -101,7 +101,7 @@ class Judgment:
             v = np.linalg.norm(item)
             min_value = v if v < min_value else min_value
             max_value = v if v > max_value else max_value
-        return math.pow(max_value-min_value, 1/4)
+        return 0.20615 * math.pow(max_value-min_value, 1/4) + 0.4
 
     def in_a_swing(self):
         mos = np.array([math.sqrt(sum(pow(x[i], 2) for i in range(3))) for x in self.Step_acc_frames])

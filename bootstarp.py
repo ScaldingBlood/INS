@@ -30,9 +30,11 @@ def process(status, frame, judgment):
     # correct
     judgment.judge(frame)
     step_length, step_speed = judgment.new_step()
+    if step_length > 0:
+        step_count += 1
     
     # feedback
-    status.next(delta_t, frame, exp, step_speed)
+    status.next(delta_t, frame, exp, step_length)
 
 
 if __name__ == '__main__':

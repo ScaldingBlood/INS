@@ -24,8 +24,20 @@ class Status:
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
         self.velocity = array2matrix(velocity)
-        self.q = np.matrix([1, 0, 0, 0]).T
-        self.B2N_matrix = rotation_matrix
+        alpha = 0.09355373656573884 / 2
+        self.q = np.matrix([math.cos(alpha), 0, 0, math.sin(alpha)]).T
+        # self.q = np.matrix([1, 0, 0, 0]).T
+        self.B2N_matrix = np.matrix([
+            [1 - 2 * self.q[2, 0] * self.q[2, 0] - 2 * self.q[3, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[2, 0] - 2 * self.q[0, 0] * self.q[3, 0],
+             2 * self.q[1, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[2, 0]],
+            [2 * self.q[1, 0] * self.q[2, 0] + 2 * self.q[0, 0] * self.q[3, 0],
+             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[3, 0] * self.q[3, 0],
+             2 * self.q[2, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[1, 0]],
+            [2 * self.q[1, 0] * self.q[3, 0] - 2 * self.q[0, 0] * self.q[2, 0],
+             2 * self.q[2, 0] * self.q[3, 0] + 2 * self.q[0, 0] * self.q[1, 0],
+             1 - 2 * self.q[1, 0] * self.q[1, 0] - 2 * self.q[2, 0] * self.q[2, 0]]
+        ])
 
         # self.delta_p = delta_p
         # self.delta_v = delta_v
@@ -44,7 +56,7 @@ class Status:
     def get_rotation_matrix(self):
         return self.B2N_matrix
 
-    def next(self, delta_t, frame, exp, sp):
+    def next(self, delta_t, frame, exp, sl):
         # w - bg
         gyros = frame.get_gyros()
         tmp = [gyros[0], gyros[1], gyros[2]]
@@ -74,16 +86,17 @@ class Status:
         ])
         # print(self.B2N_matrix * self.B2N_matrix.T)
 
-        # f - ba
-        accs = frame.get_accs()
-        tmp = [accs[0], accs[1], accs[2]]
-        # v = v + [C * (f - ba) -g] * delta_t
-        if sp != 0:
-            self.velocity = self.B2N_matrix * array2matrix([0, sp, 0])
-        self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
+        # # f - ba
+        # accs = frame.get_accs()
+        # tmp = [accs[0], accs[1], accs[2]]
+        # # v = v + [C * (f - ba) -g] * delta_t
+        # if sp != 0:
+        #     self.velocity = self.B2N_matrix * array2matrix([0, sp, 0])
+        # self.velocity = self.velocity + (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])) * delta_t
 
         # p = p + v * delta_t
-        self.position = self.position + self.velocity * delta_t
+        if sl != 0:
+            self.position = self.position + self.B2N_matrix * np.matrix([0, sl, 0]).T
         # print(self.position)
 
         print()
@@ -99,235 +112,4 @@ class Status:
         print()
         exp.add_pos(self.position[0, 0] * 12, self.position[1, 0] * 12)
         exp.add_debug_v(self.delta_k, self.velocity, (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
-
-    def next_delta(self, delta_t, frame):
-        # (f_nX) * delta_t
-        fnt = cross_product(self.B2N_matrix * array2matrix(frame.get_accs())) * delta_t
-        # C * delta_t
-        ct = self.B2N_matrix * delta_t
-
-        # 15 * 15
-        updater = np.matrix([
-            # [1, 0, 0,  delta_t, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
-            # [0, 1, 0,  0, delta_t, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0],
-            # [0, 0, 1,  0, 0, delta_t,  0, 0, 0,  0, 0, 0,  0, 0, 0],
-            #
-            # [0, 0, 0,  1, 0, 0,  fnt[0, 0], fnt[0, 1], fnt[0, 1],  0, 0, 0,  ct[0, 0], ct[0, 1], ct[0, 2]],
-            # [0, 0, 0,  0, 1, 0,  fnt[1, 0], fnt[1, 1], fnt[1, 2],  0, 0, 0,  ct[1, 0], ct[1, 1], ct[1, 2]],
-            # [0, 0, 0,  0, 0, 1,  fnt[2, 0], fnt[2, 1], fnt[2, 2],  0, 0, 0,  ct[2, 0], ct[2, 1], ct[2, 2]],
-            #
-            # [0, 0, 0,  0, 0, 0,  1, 0, 0,  -ct[0, 0], -ct[0, 1], -ct[0, 2],  0, 0, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 1, 0,  -ct[1, 0], -ct[1, 1], -ct[1, 2],  0, 0, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 0, 1,  -ct[2, 0], -ct[2, 1], -ct[2, 2],  0, 0, 0],
-            #
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0,  0, 0, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0,  0, 0, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1,  0, 0, 0],
-            #
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  1, 0, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1, 0],
-            # [0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 1]
-            [0, 0, 0, delta_t, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, delta_t, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, delta_t, 0, 0, 0],
-
-            [0, 0, 0, 0, 0, 0, fnt[0, 0], fnt[0, 1], fnt[0, 1]],
-            [0, 0, 0, 0, 0, 0, fnt[1, 0], fnt[1, 1], fnt[1, 2]],
-            [0, 0, 0, 0, 0, 0, fnt[2, 0], fnt[2, 1], fnt[2, 2]],
-
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ])
-
-        bias_updater = np.matrix([
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [ct[0, 0], ct[0, 1], ct[0, 2], 0, 0, 0],
-            [ct[1, 0], ct[1, 1], ct[1, 2], 0, 0, 0],
-            [ct[2, 0], ct[2, 1], ct[2, 2], 0, 0, 0],
-            [0, 0, 0, -ct[0, 0], -ct[0, 1], -ct[0, 2]],
-            [0, 0, 0, -ct[1, 0], -ct[1, 1], -ct[1, 2]],
-            [0, 0, 0, -ct[2, 0], -ct[2, 1], -ct[2, 2]],
-        ])
-
-        self.delta_k = updater * self.delta_k + bias_updater * self.bias
-        self.covariance = updater * self.covariance * updater.T + self.covariance_q
-        print(self.delta_k.T)
-
-    def correct_by_zupt(self):
-        H = np.matrix([
-            [0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0],
-        ])
-        # 量测噪声
-        covariance_r = np.diag([self.r_v[0], self.r_v[1], self.r_v[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        # 测量值
-        y = self.velocity - np.matrix([0, 0, 0]).T
-
-        self.delta_k = self.delta_k + K * (y - H * self.delta_k)
-
-        self.covariance = (np.eye(9) - K * H) * self.covariance
-        print("zupt " + str(self.delta_k.T))
-
-    def correct_by_zaru(self, first_epoch_rotation):
-        # 描述非常模糊，且使用到ins计算出的航向角，但是系统中并没有对角速度积分
-
-        H = np.matrix([
-            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        ])
-        # 量测噪声
-        covariance_r = np.diag([self.r_ap[0], self.r_ap[1], self.r_ap[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        # 测量值
-        rotation = cv2.Rodrigues(self.get_rotation_matrix() * first_epoch_rotation.I)[0]
-
-        self.delta_k = self.delta_k + K * (rotation - H * self.delta_k)
-
-        self.covariance = (np.eye(15) - K * H) * self.covariance
-        print("zaru " + str(self.delta_k.T))
-
-    def correct_by_velocity(self, step_speed):
-        v_pdr = step_speed
-
-        # 通过导航坐标系旋转矩阵旋转计算行人坐标系旋转矩阵
-        # angle = math.atan2(self.velocity[1, 0], self.velocity[0, 0])
-
-        # B2L_matrix = self.B2N_matrix * np.matrix([
-        #     [math.cos(angle), math.sin(angle), 0],
-        #     [-math.sin(angle), math.cos(angle), 0],
-        #     [0, 0 ,1]
-        # ])
-        B2L_matrix = np.eye(3)
-
-        # N -> B
-        N2B_matrix = self.B2N_matrix.T
-        
-        tmp = B2L_matrix * N2B_matrix
-        tmp2 = B2L_matrix * N2B_matrix * cross_product([self.velocity[0, 0], self.velocity[1, 0], self.velocity[2, 0]])
-
-        H = np.matrix([
-            [0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], -tmp2[0, 0], -tmp2[0, 1], -tmp2[0, 2]],
-            [0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], -tmp2[1, 0], -tmp2[1, 1], -tmp2[1, 2]],
-            [0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], -tmp2[2, 0], -tmp2[2, 1], -tmp2[2, 2]]
-        ])
-
-        # 量测噪声
-        covariance_r = np.diag([self.r_vl[0], self.r_vl[1], self.r_vl[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        # 测量值
-        print("speed: " + str(self.B2N_matrix * array2matrix([0, v_pdr, 0])))
-        y = B2L_matrix * N2B_matrix * self.velocity - array2matrix([0, v_pdr, 0])
-
-        self.delta_k = self.delta_k + K * (y - H * self.delta_k)
-
-        self.covariance = (np.eye(9) - K * H) * self.covariance
-        print("step-v " + str(self.delta_k.T))
-
-    def correct_by_step_length(self, step_length, pos):
-        if pos is None:
-            return self.position
-        # angle = math.atan2(self.velocity[1, 0], self.velocity[0, 0])
-        angle = 0
-        pos = pos + np.matrix([step_length * math.cos(angle), step_length * math.sin(angle), 1]).T
-
-        H = np.matrix([
-            [1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0]
-        ])
-
-        # 量测噪声
-        covariance_r = np.diag([self.r_p[0], self.r_p[1], self.r_p[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-        
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        # 测量值
-        y = self.position - pos
-
-        self.delta_k = self.delta_k + K * (y - H * self.delta_k)
-
-        self.covariance = (np.eye(9) - K * H) * self.covariance
-        print("step-l " + str(self.delta_k.T))
-
-    def correct_by_gravity(self, frame):
-        fb = array2matrix(frame.get_accs())
-        
-        tmp = self.B2N_matrix * fb
-
-        # 测量值
-        # y = tmp - array2matrix([self.delta_k[12, 0], self.delta_k[13, 0], self.delta_k[14, 0]]) - array2matrix([0, 0, self.g])
-        y = tmp - array2matrix([0, 0, self.g])
-
-        tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
-
-        H = np.matrix([
-            # [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, self.B2N_matrix[0, 0], self.B2N_matrix[0, 1], self.B2N_matrix[0, 2]],
-            # [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, self.B2N_matrix[1, 0], self.B2N_matrix[1, 1], self.B2N_matrix[1, 2]],
-            # [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, self.B2N_matrix[2, 0], self.B2N_matrix[2, 1], self.B2N_matrix[2, 2]]
-            [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2]],
-            [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2]],
-            [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2]]
-        ])
-
-        # 量测噪声
-        covariance_r = np.diag([self.r_a[0], self.r_a[1], self.r_a[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-        
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        self.delta_k = self.delta_k + K * (y - H * self.delta_k)
-
-        self.covariance = (np.eye(9) - K * H) * self.covariance
-        print("g " + str(self.delta_k.T))
-
-    def correct_by_mag(self, frame, mag):
-        mb = array2matrix(frame.get_mags())
-
-        tmp = self.B2N_matrix * mb
-
-        # 测量值
-        y = tmp - mag
-        if abs(y[0]) > 10 or abs(y[1]) > 10 or abs(y[2]) > 10:
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        print(y)
-        tmp = cross_product([tmp[0, 0], tmp[1, 0], tmp[2, 0]])
-
-        H = np.matrix([
-            [0, 0, 0, 0, 0, 0, tmp[0, 0], tmp[0, 1], tmp[0, 2], 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, tmp[1, 0], tmp[1, 1], tmp[1, 2], 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, tmp[2, 0], tmp[2, 1], tmp[2, 2], 0, 0, 0, 0, 0, 0]
-        ])
-
-        # 量测噪声
-        covariance_r = np.diag([self.r_m[0], self.r_m[1], self.r_m[2]])
-        covariance_r = np.multiply(covariance_r, covariance_r)
-
-        # 卡尔曼增益
-        K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
-
-        self.delta_k = self.delta_k + K * (y - H * self.delta_k)
-
-        self.covariance = (np.eye(15) - K * H) * self.covariance
-        print("mag " + str(self.delta_k.T))
 

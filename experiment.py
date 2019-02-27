@@ -97,7 +97,7 @@ class Experiment:
         bgimg = img.imread('data/f7.png')
         imgplot = plt.imshow(bgimg)
 
-        plt.plot(self.pos_x, self.pos_y, 'r:')
+        plt.plot(self.pos_x, self.pos_y, 'r-')
         plt.show()
 
         # gyro of axis-z
