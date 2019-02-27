@@ -17,7 +17,7 @@ class Judgment:
     gama = 2 / N
     
     # variance of acceleration
-    va = 5
+    va = 7
 
     # window size of mag
     Win_size = 10
@@ -78,8 +78,6 @@ class Judgment:
 
     def new_step(self):
         accs = self.frame.get_accs()
-        self.Step_acc_frames.append(accs)
-
         step_length = 0
         step_speed = 0
         # peak detection algorithm
@@ -90,7 +88,9 @@ class Judgment:
             step_length = self.calculate_step_length()
             is_swing = self.in_a_swing()
             if not is_swing:
-                step_speed = step_length / (len(self.Step_acc_frames) * self.delta_t)
+                during = len(self.Step_acc_frames) * self.delta_t
+                during = 1 if during > 1 else during
+                step_speed = step_length / during
             self.Step_acc_frames.clear()
         return step_length, step_speed
 
@@ -101,10 +101,11 @@ class Judgment:
             v = np.linalg.norm(item)
             min_value = v if v < min_value else min_value
             max_value = v if v > max_value else max_value
-        return math.pow(max_value-min_value, 1/4)
+        return 0.20615 * math.pow(max_value-min_value, 1/4) + 0.45
 
     def in_a_swing(self):
         mos = np.array([math.sqrt(sum(pow(x[i], 2) for i in range(3))) for x in self.Step_acc_frames])
+        # print(np.var(mos))
         return np.var(mos) > self.va
 
     def low_dynamic(self):
