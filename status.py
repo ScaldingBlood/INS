@@ -24,7 +24,7 @@ class Status:
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
         self.velocity = array2matrix(velocity)
-        alpha = 0.09355373656573884 / 2
+        alpha = 0.038 / 2
         self.q = np.matrix([math.cos(alpha), 0, 0, math.sin(alpha)]).T
         # self.q = np.matrix([1, 0, 0, 0]).T
         self.B2N_matrix = np.matrix([
