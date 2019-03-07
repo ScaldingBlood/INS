@@ -78,7 +78,6 @@ class Judgment:
 
     def new_step(self):
         accs = self.frame.get_accs()
-        self.Step_acc_frames.append(accs)
 
         step_length = 0
         step_speed = 0
@@ -101,7 +100,7 @@ class Judgment:
             v = np.linalg.norm(item)
             min_value = v if v < min_value else min_value
             max_value = v if v > max_value else max_value
-        return 0.20615 * math.pow(max_value-min_value, 1/4) + 0.4
+        return 0.2* math.pow(max_value-min_value, 1/3)/3 + 0.56
 
     def in_a_swing(self):
         mos = np.array([math.sqrt(sum(pow(x[i], 2) for i in range(3))) for x in self.Step_acc_frames])
