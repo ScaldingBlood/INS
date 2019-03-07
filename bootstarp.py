@@ -12,16 +12,27 @@ delta_t = 1 / 100
 
 last_step_time = 0
 pos = None
+last_rotation = None
 first_epoch_mag = None
 first_epoch_rotation = None
 step_count = 0
+new_step = False
 
+def cal_distance(pos1, pos2):
+    if np.linalg.norm((pos1 - pos2)[0:1, 0]) < 1:
+        return True
+    else:
+        return False
+    return np.linalg.norm(pos1 - pos2) < 0.8
 
 def process(status, frame, judgment):
     global pos
+    global last_rotation
+    global new_step
     global first_epoch_mag
     global first_epoch_rotation
     global step_count
+
 
     exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
     # predict
@@ -39,18 +50,17 @@ def process(status, frame, judgment):
         first_epoch_rotation = None
         step_length, step_speed = judgment.new_step()
         if step_length > 0:
-            if step_speed == 0:
-                if pos == 0:
-                    pos = status.get_pos()
-                else:
-                    pos = status.correct_by_step_length(step_length, pos)
-            else:
-                step_count = step_count + 1
-                pos = 0
-                # can we also update pos here ?
+            new_step = True
+            step_count = step_count + 1
+
+            if pos is not None and cal_distance(pos, status.get_pos()):
+            # if pos is not None:
+                status.correct_by_step_length(step_length, pos, last_rotation)
+
+            if step_speed > 0:
                 status.correct_by_velocity(step_speed)
         else:
-            pos = 0
+            new_step = False
 
     if judgment.low_dynamic():
         status.correct_by_gravity(frame)
@@ -65,6 +75,12 @@ def process(status, frame, judgment):
     
     # feedback
     status.next(delta_t, frame, exp)
+
+    # set new step
+    # if len(judgment.Step_acc_frames) == 0:
+    if new_step:
+        pos = status.get_pos()
+        last_rotation = status.get_rotation_matrix()
 
 
 if __name__ == '__main__':

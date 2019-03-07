@@ -12,7 +12,7 @@ class Status:
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
     # 测量协方差矩阵R -> 越小越信任观测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.1, 0.1], [0.01, 0.01, 0.01]
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.2, 0.2, 0.2], [0.01, 0.1, 0.1], [0.01, 0.01, 0.01]
 
     # 预测协方差矩阵Q -> 越小越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
     covariance_q = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -128,7 +128,7 @@ class Status:
 
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
-        # print(self.position)
+        print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
 
         # self.delta_k = np.matrix([0,0,0,0,0,0,0,0,0]).T
@@ -287,12 +287,8 @@ class Status:
         self.covariance = (np.eye(9) - K * H) * self.covariance
         print("step-v " + str(self.delta_k.T))
 
-    def correct_by_step_length(self, step_length, pos):
-        if pos is None:
-            return self.position
-        # angle = math.atan2(self.velocity[1, 0], self.velocity[0, 0])
-        angle = 0
-        pos = pos + np.matrix([step_length * math.cos(angle), step_length * math.sin(angle), 1]).T
+    def correct_by_step_length(self, step_length, pos, rotation):
+        pos = pos + rotation * array2matrix([0, step_length, 0])
 
         H = np.matrix([
             [1, 0, 0, 0, 0, 0, 0, 0, 0],
