@@ -62,7 +62,7 @@ def process(status, frame, judgment):
         else:
             new_step = False
 
-    if judgment.low_dynamic():
+    if judgment.low_dynamic(exp):
         status.correct_by_gravity(frame)
 
     # if judgment.quasi_static_magnetic(status.get_rotation_matrix(), first_epoch_mag):

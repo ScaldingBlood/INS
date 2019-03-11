@@ -29,6 +29,8 @@ class Experiment:
 
     gyro_z = []
 
+    low_dynamic_judge = []
+
     def add_avg_acc(self, acc):
         self.avg_acc_list.append(acc)
 
@@ -76,6 +78,9 @@ class Experiment:
     def add_gyro(self, g):
         self.gyro_z.append(g[2, 0])
 
+    def add_low_dynamic_judge(self, m):
+        self.low_dynamic_judge.append(m)
+
     def show(self):
         # plt.figure()
         # t = np.arange(0, len(self.res_to_judge) * 0.01, 0.01)
@@ -111,6 +116,13 @@ class Experiment:
         t = np.arange(0, len(self.angle_a) * 0.01, 0.01)
         plt.plot(t, self.angle_a, "r:", t, self.angle_b, "g:", t, self.angle_c, "b:")
         plt.show()
+
+        # judge low dynamic situation
+        # plt.figure('low')
+        # t = np.arange(0, len(self.low_dynamic_judge) * 0.01, 0.01)
+        # plt.plot(t, self.low_dynamic_judge, "r:")
+        # plt.show()
+
 
         # pure INS
         # plt.figure()

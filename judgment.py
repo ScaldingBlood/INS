@@ -109,11 +109,12 @@ class Judgment:
         # print(np.var(mos))
         return np.var(mos) > self.va
 
-    def low_dynamic(self):
+    def low_dynamic(self, exp):
         # accs = self.frame.get_accs()
         # mo = math.sqrt(sum(pow(accs[i], 2) for i in range(3)))
         mo = np.linalg.norm(np.array(self.frame.get_accs()))
-        return math.fabs(mo - 9.801) < 0.5
+        # exp.add_low_dynamic_judge(math.fabs(mo - 9.801))
+        return math.fabs(mo - 9.801) < 0.05
 
     def quasi_static_magnetic(self, rotation_matrix, first_epoch_mag):
         self.rotations.append(rotation_matrix)
