@@ -109,6 +109,13 @@ class Experiment:
         # angle of three axises
         plt.figure('angle')
         t = np.arange(0, len(self.angle_a) * 0.01, 0.01)
+        self.angle_a = [a if a > -175 else a + 360 for a in self.angle_a]
+        self.angle_b = [a if a > -175 else a + 360 for a in self.angle_b]
+        self.angle_c = [a if a > -175 else a + 360 for a in self.angle_c]
+        plt.plot(t, [0 for t in range(len(t))], "k--")
+        plt.plot(t, [90 for t in range(len(t))], "k--")
+        plt.plot(t, [-90 for t in range(len(t))], "k--")
+        plt.plot(t, [180 for t in range(len(t))], "k--")
         plt.plot(t, self.angle_a, "r:", t, self.angle_b, "g:", t, self.angle_c, "b:")
         plt.show()
 
