@@ -12,7 +12,7 @@ class Status:
 
     # ------------------------------------------------------------需要调参--------------------------------------------------------------
     # 测量协方差矩阵R -> 越小越信任观测，稳态噪声（重要！）
-    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.2, 0.2, 0.2], [0.01, 0.1, 0.1], [0.01, 0.01, 0.01]
+    r_v, r_ap, r_vl, r_p, r_a, r_m = [0.01, 0.01, 0.01], [0.01, 0.01, 0.01], [0.8, 0.8, 0.8], [0.2, 0.2, 0.2], [3, 3, 3], [0.01, 0.01, 0.01]
 
     # 预测协方差矩阵Q -> 越小越信任模型（重要！） 如果没有先验信息，应当适当增大Q的取值
     covariance_q = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -21,9 +21,9 @@ class Status:
                               [0, 0, 0, 3, 0, 0, 0, 0, 0],
                               [0, 0, 0, 0, 3, 0, 0, 0, 0],
                               [0, 0, 0, 0, 0, 3, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0.03, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0.03, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0, 0.03]])
+                              [0, 0, 0, 0, 0, 0, 0.005, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0.005, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0, 0.005]])
 
     # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
     covariance = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -106,7 +106,7 @@ class Status:
                                    error_q_v[0] * self.q[3, 0] + error_q_v[1] * self.q[2, 0] - error_q_v[2] * self.q[1, 0] + error_q_v[3] * self.q[0, 0]]).T
             self.q = self.q / np.linalg.norm(self.q)
 
-        # exp.add_gyro(self.B2N_matrix * array2matrix(frame.get_gyros()))
+        exp.add_gyro(self.B2N_matrix * array2matrix(frame.get_gyros()))
 
         exp.add_angle([math.atan2(2 * (self.q[0, 0] * self.q[1, 0] + self.q[2, 0] * self.q[3, 0]), (1 - 2 * (self.q[1, 0] * self.q[1, 0] + self.q[2, 0] * self.q[2, 0]))) * 180 / math.pi,
                        math.asin(2 * (self.q[0, 0] * self.q[2, 0] - self.q[1, 0] * self.q[3, 0])) * 180 / math.pi,
@@ -117,7 +117,6 @@ class Status:
             [2*self.q[1,0]*self.q[2,0] + 2*self.q[0,0]*self.q[3,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[3,0]*self.q[3,0], 2*self.q[2,0]*self.q[3,0] - 2*self.q[0,0]*self.q[1,0]],
             [2*self.q[1,0]*self.q[3,0] - 2*self.q[0,0]*self.q[2,0], 2*self.q[2,0]*self.q[3,0] + 2*self.q[0,0]*self.q[1,0], 1 - 2*self.q[1,0]*self.q[1,0] - 2*self.q[2,0]*self.q[2,0]]
         ])
-        print(self.B2N_matrix * self.B2N_matrix.T)
 
         # f - ba
         accs = frame.get_accs()
@@ -128,21 +127,17 @@ class Status:
 
         # p = p + v * delta_t
         self.position = self.position + self.velocity * delta_t
-        print(self.position)
         self.position = self.position - array2matrix([self.delta_k[0, 0], self.delta_k[1, 0], self.delta_k[2, 0]])
 
         # self.delta_k = np.matrix([0,0,0,0,0,0,0,0,0]).T
-        print()
-        print('p ' + str(self.position.T))
-        print('v ' + str(self.velocity.T))
-        print('rotation' + str(self.B2N_matrix))
-        # print('a ' + str(accs))
-        # print('a-ba ' + str(array2matrix(tmp)))
-        # print('C*a' + str((self.B2N_matrix * array2matrix(frame.get_accs())).T))
-        print('a ' + str(array2matrix(frame.get_accs()).T))
-        print('C*a ' + str((self.B2N_matrix * array2matrix(tmp)).T))
-        print('ad ' + str((self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])).T))
-        print()
+        # print()
+        # print('p ' + str(self.position.T))
+        # print('v ' + str(self.velocity.T))
+        # print('rotation' + str(self.B2N_matrix))
+        # print('a ' + str(array2matrix(frame.get_accs()).T))
+        # print('C*a ' + str((self.B2N_matrix * array2matrix(tmp)).T))
+        # print('ad ' + str((self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])).T))
+        # print()
         exp.add_pos(self.position[0, 0] * 12, self.position[1, 0] * 12)
         exp.add_debug_v(self.delta_k, self.velocity, (self.B2N_matrix * array2matrix(tmp) - array2matrix([0, 0, self.g])))
 
@@ -200,7 +195,7 @@ class Status:
 
         self.delta_k = updater * self.delta_k + bias_updater * self.bias
         self.covariance = updater * self.covariance * updater.T + self.covariance_q
-        print(self.delta_k.T)
+        # print(self.delta_k.T)
 
     def correct_by_zupt(self):
         H = np.matrix([
@@ -279,7 +274,7 @@ class Status:
         K = self.covariance * H.T * np.linalg.pinv(H * self.covariance * H.T + covariance_r)
 
         # 测量值
-        print("speed: " + str(self.B2N_matrix * array2matrix([0, v_pdr, 0])))
+        print("speed: " + str(self.B2N_matrix * array2matrix([0, v_pdr, 0])) + '\n' + str(N2B_matrix * self.velocity))
         y = B2L_matrix * N2B_matrix * self.velocity - array2matrix([0, v_pdr, 0])
 
         self.delta_k = self.delta_k + K * (y - H * self.delta_k)
