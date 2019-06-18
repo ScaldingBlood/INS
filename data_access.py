@@ -4,7 +4,7 @@ import pandas as pd
 
 class DataAccess:
     def __init__(self):
-        self.df = pd.read_csv('data/round.txt')
+        self.df = pd.read_csv('data/big-round2.txt')
         self.loc = pd.read_csv('data/Location_Result1547455882986.txt')
         self.flag = True
         self.pos = 0

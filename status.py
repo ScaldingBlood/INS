@@ -22,12 +22,12 @@ class Status:
     covariance_q = np.matrix([[0.1, 0, 0, 0, 0, 0, 0, 0, 0],
                               [0, 0.1, 0, 0, 0, 0, 0, 0, 0],
                               [0, 0, 0.1, 0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 1, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 1, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 1, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0.001, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0.001, 0],
-                              [0, 0, 0, 0, 0, 0, 0, 0, 0.001]])
+                              [0, 0, 0, 1.2, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 1.2, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 1.2, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0.01, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0.01, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 0, 0.01]])
 
     # 状态delta_k的协方差矩阵P -> 决定瞬态过程收敛速率，稳态过程中的P由QR决定
     covariance = np.matrix([[1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -46,7 +46,7 @@ class Status:
     def __init__(self, position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba):
         self.position = array2matrix(position)
         self.velocity = array2matrix(velocity)
-        alpha = 0.022 / 2
+        alpha = 0.005 / 2
         self.q = np.matrix([math.cos(alpha), 0, 0, math.sin(alpha)]).T
         # self.q = np.matrix([1, 0, 0, 0]).T
         self.B2N_matrix = q2R(self.q)
