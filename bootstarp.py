@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # initial status
     x, y = data_access.get_start_pos()
     position = [x, y, 1]
-    velocity = [0, 0, 0]
+    velocity = [0, 1, 0]
     rotation_matrix = np.eye(3)
     delta_p = [0, 0, 0]
     delta_v = [0, 0, 0]
