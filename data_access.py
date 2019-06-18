@@ -4,7 +4,7 @@ import pandas as pd
 
 class DataAccess:
     def __init__(self):
-        self.df = pd.read_csv('data/round2.txt')
+        self.df = pd.read_csv('data/round.txt')
         self.loc = pd.read_csv('data/Location_Result1547455882986.txt')
         self.flag = True
         self.pos = 0
@@ -23,7 +23,7 @@ class DataAccess:
         frame = Frame([self.df.iloc[self.pos, 1], self.df.iloc[self.pos, 2], self.df.iloc[self.pos, 3]],
                       [self.df.iloc[self.pos + 1, 1], self.df.iloc[self.pos + 1, 2], self.df.iloc[self.pos + 1, 3]],
                       [self.df.iloc[self.pos + 2, 1], self.df.iloc[self.pos + 2, 2], self.df.iloc[self.pos + 2, 3]],
-                      self.df.iloc[self.pos + 3, 1])
+                      [self.df.iloc[self.pos + 3, 1], self.df.iloc[self.pos + 3, 2], self.df.iloc[self.pos + 3, 3]])
         self.pos = self.pos + 4
         return frame
 

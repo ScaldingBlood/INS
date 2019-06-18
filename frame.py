@@ -3,7 +3,7 @@ class Frame:
         self.accs = accs
         self.gyros = gyros
         self.mags = mags
-        self.angle = angle
+        self.angle = [-angle[0], -angle[1], -angle[2]]
     
     def get_accs(self):
         return self.accs

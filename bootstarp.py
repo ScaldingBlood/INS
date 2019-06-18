@@ -17,6 +17,8 @@ first_epoch_mag = None
 first_epoch_rotation = None
 step_count = 0
 new_step = False
+mag_count = 0
+begin = False
 
 def cal_distance(pos1, pos2):
     if np.linalg.norm((pos1 - pos2)[0:1, 0]) < 1:
@@ -32,6 +34,8 @@ def process(status, frame, judgment):
     global first_epoch_mag
     global first_epoch_rotation
     global step_count
+    global mag_count
+    global begin
 
 
     exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
@@ -42,39 +46,58 @@ def process(status, frame, judgment):
     judgment.judge(frame)
     if judgment.quasi_static_state():
         status.correct_by_zupt()
+        status.correct_by_gravity(frame)
         # if first_epoch_rotation is None:
         #     first_epoch_rotation = status.get_rotation_matrix()
         # else:
         #     status.correct_by_zaru(first_epoch_rotation)
     else:
+        if judgment.low_dynamic():
+            status.correct_by_gravity(frame)
+
         first_epoch_rotation = None
         step_length, step_speed = judgment.new_step()
         if step_length > 0:
             new_step = True
             step_count = step_count + 1
 
-            if pos is not None and cal_distance(pos, status.get_pos()):
-            # if pos is not None:
-                status.correct_by_step_length(step_length, pos, last_rotation)
+            # if pos is not None and cal_distance(pos, status.get_pos()):
+            # # if pos is not None:
+            #     status.correct_by_step_length(step_length, pos, last_rotation)
 
             if step_speed > 0:
                 status.correct_by_velocity(step_speed)
         else:
             new_step = False
 
-    if judgment.low_dynamic(exp):
-        status.correct_by_gravity(frame)
+    if len(judgment.Win_mag_frames) > judgment.Win_size:
+        if judgment.quasi_static_magnetic():
+            mag_count += 1
+            if mag_count == 5:
 
-    # if judgment.quasi_static_magnetic(status.get_rotation_matrix(), first_epoch_mag):
-    #     if first_epoch_mag is None:
-    #         first_epoch_mag = status.get_rotation_matrix() * array2matrix(frame.get_mags())
-    #     else:
-    #         status.correct_by_mag(frame, first_epoch_mag)
+                if not begin:
+                    # status.q = vec_2q(frame.get_mags(), status.global_m)
+                    eular_ang = frame.get_angle()
+                    eular_ang[0] = 0
+                    eular_ang[1] = 0
+                    status.q = angle2q(eular_ang)
+                    begin = True
+
+                exp.add_mag_correct_p(1)
+                status.correct_by_mag(array2matrix(frame.get_mags()))
+                mag_count = 0
+            else:
+                exp.add_mag_correct_p(0)
+        else:
+            mag_count = 0
+            exp.add_mag_correct_p(0)
     # else:
-    #     first_epoch_mag = None
-    
+    #     exp.add_mag_correct_p(0)
+
     # feedback
-    status.next(delta_t, frame, exp)
+    status.add_sensor_data(delta_t, frame)
+
+    status.next(delta_t, frame, exp, begin)
 
     # set new step
     # if len(judgment.Step_acc_frames) == 0:
