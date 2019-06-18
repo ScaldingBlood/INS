@@ -215,12 +215,12 @@ class Experiment:
         # plt.show()
 
         # velocity of three axises
-        # plt.figure('velocity')
-        # t = np.arange(0, len(self.velocity) * 0.01, 0.01)
-        # self.velocity = np.array(self.velocity)
-        # plt.plot(t, self.velocity[:,0], 'r:')
-        # plt.plot(t, self.velocity[:,1], 'g:')
-        # plt.plot(t, self.velocity[:,2], 'b:')
+        plt.figure('velocity')
+        t = np.arange(0, len(self.velocity) * 0.01, 0.01)
+        self.velocity = np.array(self.velocity)
+        plt.plot(t, self.velocity[:,0], 'r:')
+        plt.plot(t, self.velocity[:,1], 'g:')
+        plt.plot(t, self.velocity[:,2], 'b:')
 
         # angle of three axises
         plt.figure('angle')

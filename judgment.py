@@ -88,13 +88,14 @@ class Judgment:
             # if self.is_first_step:
             #     self.is_first_step = False
             # else:
-            step_length = self.calculate_step_length()
-            # step_length = 0.6
+            # step_length = self.calculate_step_length()
+            step_length = 0.6
             is_swing = self.in_a_swing()
             if not is_swing:
                 during = len(self.Step_acc_frames) * self.delta_t
                 during = 1 if during > 1 else during
                 step_speed = step_length / during
+            step_speed = step_speed if step_speed < 2 else 1
             self.Step_acc_frames.clear()
         return step_length, step_speed
 
