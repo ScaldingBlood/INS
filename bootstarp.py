@@ -1,6 +1,8 @@
 from status import Status
+from status2 import Status2
 from data_access import DataAccess
 from judgment import Judgment
+from judgment2 import Judgment2
 import numpy as np
 from experiment import Experiment
 from utils import *
@@ -106,9 +108,29 @@ def process(status, frame, judgment):
         last_rotation = status.get_rotation_matrix()
 
 
+def process2(status, frame, judgment):
+    global pos
+    global first_epoch_mag
+    global first_epoch_rotation
+    global step_count
+
+    exp.add_acc(frame.get_accs()[0], frame.get_accs()[1])
+    # predict
+    # status.next_delta(delta_t, frame)
+
+    # correct
+    judgment.judge(frame)
+    step_length, step_speed = judgment.new_step()
+    if step_length > 0:
+        step_count += 1
+
+    # feedback
+    status.next(delta_t, frame, exp, step_length)
+
 if __name__ == '__main__':
     exp = Experiment()
     judgment = Judgment(delta_t, exp)
+    judgment2 = Judgment2(delta_t, exp)
     data_access = DataAccess()
 
     # initial status
@@ -123,7 +145,18 @@ if __name__ == '__main__':
     ba = [0.02, 0.15, -0.17]
 
     status = Status(position, velocity, rotation_matrix, delta_p, delta_v, delta_ap, bg, ba)
+
+    position2 = [x, y, 1]
+    velocity2 = [0, 1, 0]
+    rotation_matrix2 = np.eye(3)
+    delta_p2 = [0, 0, 0]
+    delta_v2 = [0, 0, 0]
+    delta_ap2 = [0, 0, 0]
+    bg2 = [0.0003, 0.0003, 0.0003]
+    ba2 = [0.02, 0.15, -0.17]
+    status2 = Status2(position2, velocity2, rotation_matrix2, delta_p2, delta_v2, delta_ap2, bg2, ba2)
     exp.add_pos(x * 12, y * 12)
+    exp.add_pos2(x * 12, y * 12)
 
     flag = 0
     while True:
@@ -134,6 +167,7 @@ if __name__ == '__main__':
             flag = 1
         if flag == 1:
             process(status, frame, judgment)
+            process2(status2, frame, judgment2)
 
     print("Step Count: " + str(step_count))
     exp.show()

@@ -19,6 +19,9 @@ class Experiment:
     pos_x = []
     pos_y = []
 
+    pos_x2 = []
+    pos_y2 = []
+
     acc_x = []
     acc_y = []
 
@@ -82,6 +85,10 @@ class Experiment:
             self.flag = False
         self.pos_x.append(self.init_x - (x - self.init_x))
         self.pos_y.append(y)
+
+    def add_pos2(self, x, y):
+        self.pos_x2.append(self.init_x - (x - self.init_x))
+        self.pos_y2.append(y)
 
     def add_acc(self, x, y):
         self.acc_x.append(x)
@@ -164,7 +171,12 @@ class Experiment:
         bgimg = img.imread('data/f7.png')
         imgplot = plt.imshow(bgimg)
 
-        plt.plot(self.pos_x, self.pos_y, 'r-')
+        pos_xt = [291, 300, 653, 643, 291]
+        pos_yt = [404, 617, 602, 393, 404]
+        plt.plot(pos_xt, pos_yt, 'black', label='Ref')
+        plt.plot(self.pos_x2, self.pos_y2, 'red', ls=':', lw=2, label='PDR')
+        plt.plot(self.pos_x, self.pos_y, 'b--', label='Proposed')
+        plt.legend()
         plt.show()
 
         # gyro of axis-z
