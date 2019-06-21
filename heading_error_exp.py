@@ -8,8 +8,8 @@ if __name__ == '__main__':
     yaw_angle_raw = np.array([x if x > 0 else 360 + x for x in yaw_angle_raw])
     yaw_angle_my = np.loadtxt('data/Yaw_Data_my.txt')[2800:]
     yaw_angle_my = np.array([x if x > 0 else 360 + x for x in yaw_angle_my])
-    yaw_angle_ahrs = np.abs(pd.read_csv('data/ahrs_yaw.csv').values.T[0, :])[3000:] + 90
-    yaw_angle_pdr = np.abs(pd.read_csv('data/Yaw_Data1560766948005.txt').values.T[0, :])[:]
+    yaw_angle_ahrs = np.abs(pd.read_csv('data/Yaw_Data_AHRS.csv').values.T[0, :])[3000:] + 90
+    yaw_angle_pdr = np.abs(pd.read_csv('data/Yaw_Data_PCA.txt').values.T[0, :])[:]
     yaw_angle_pdr = yaw_angle_pdr + 30
 
     t = np.arange(0, len(yaw_angle_raw)/100, 0.01)
@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
     yaw_angle_raw = np.loadtxt('data/Yaw_Data_raw.txt')[2800:]
     yaw_angle_my = np.loadtxt('data/Yaw_Data_my.txt')[2800:]
-    yaw_angle_pdr = np.abs(pd.read_csv('data/Yaw_Data1560766948005.txt').values.T[0, :])[30:]
-    yaw_angle_ahrs = np.abs(pd.read_csv('data/ahrs_yaw.csv').values.T[0, :])[:]
+    yaw_angle_pdr = np.abs(pd.read_csv('data/Yaw_Data_PCA.txt').values.T[0, :])[30:]
+    yaw_angle_ahrs = np.abs(pd.read_csv('data/Yaw_Data_AHRS.csv').values.T[0, :])[:]
 
     print(np.mean(yaw_angle_raw))
     print(np.mean(yaw_angle_pdr))

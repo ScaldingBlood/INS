@@ -36,7 +36,7 @@ class DataAccess:
 if __name__ == '__main__':
     da = DataAccess()
     head_info = ['ax', 'ay', 'az', 'gx', 'gy', 'gz', 'mx', 'my', 'mz', 'yaw', 'time']
-    csvFile = open('expdata-twobuildings.csv', 'w')
+    csvFile = open('data/ahrsdata-twobuildings.csv', 'w')
     writer = csv.writer(csvFile)
     writer.writerow(head_info)
     while True:
