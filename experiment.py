@@ -264,8 +264,9 @@ class Experiment:
 
         plt.show()
 
-        np.savetxt('data/Yaw_Data_raw.txt', self.yaw_angle_raw)
-        np.savetxt('data/Yaw_Data_my.txt', self.yaw_angle_my)
+        # save data txt
+        # np.savetxt('data/Yaw_Data_raw.txt', self.yaw_angle_raw)
+        # np.savetxt('data/Yaw_Data_my.txt', self.yaw_angle_my)
 
         # judge low dynamic situation
         # plt.figure('low')
