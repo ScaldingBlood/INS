@@ -21,7 +21,7 @@ if __name__ == '__main__':
     plt.plot(t_a, yaw_angle_ahrs, 'r', label='AHRS')
     plt.plot(t, yaw_angle_my, 'b', label='Proposed')
     plt.xlabel('Time/s')
-    plt.ylabel('Error/°')
+    plt.ylabel('Heading/°')
     plt.legend()
     plt.show()
 
